@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>כרומהשיפט</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>כרומהשיפט</h1>
+      <div class="game-stats">
+        <div id="moveCounter">מהלכים: <span>0</span></div>
+        <div id="bestScore">שיא אישי: <span>-</span></div>
+      </div>
+    </header>
+
+    <main>
+      <div id="gameBoard"></div>
+      <div id="colorPicker"></div>
+      
+      <div class="controls">
+        <button id="newGameBtn">משחק חדש</button>
+        <button id="helpBtn">הוראות</button>
+        <select id="boardSizeSelect">
+          <option value="5">5x5</option>
+          <option value="6">6x6</option>
+          <option value="8">8x8</option>
+        </select>
+      </div>
+    </main>
+
+    <div id="instructions" class="modal hidden">
+      <div class="modal-content">
+        <h2>הוראות המשחק</h2>
+        <p>ברוכים הבאים לכרומהשיפט - משחק פאזל אסטרטגי מבוסס צבעים!</p>
+        <ul>
+          <li>המטרה היא לכבוש את כל לוח המשחק בכמה שפחות מהלכים.</li>
+          <li>אתם מתחילים מהפינה השמאלית העליונה.</li>
+          <li>בכל תור בחרו צבע - כל האריחים שבבעלותכם יהפכו לאותו צבע.</li>
+          <li>אם אריח סמוך הוא באותו צבע שבחרתם, הוא מצטרף לשטח שלכם!</li>
+          <li>המשיכו לבחור צבעים עד שכל הלוח בבעלותכם.</li>
+        </ul>
+        <button id="closeInstructions">הבנתי</button>
+      </div>
+    </div>
+
+    <div id="winModal" class="modal hidden">
+      <div class="modal-content">
+        <h2>ניצחון! 🎉</h2>
+        <p>סיימת את המשחק ב-<span id="finalMoves"></span> מהלכים!</p>
+        <button id="playAgainBtn">שחק שוב</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
