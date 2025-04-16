@@ -3,8 +3,8 @@
  * A color-based puzzle game where players flood fill the board to capture all tiles.
  */
 
-// Import board definitions from external file
-import { PredefinedBoards, BoardDifficulty } from './boards.js';
+// Import board generation functions from external file
+import { generateBoard, analyzeBoard, DIFFICULTY_LEVELS, COLORS } from './boards.js';
 
 // Global color variables
 const COLOR_RED = '#e74c3c';
@@ -34,9 +34,7 @@ const GameConfig = {
     bestScores: 'chromashift-best-scores',
     settings: 'chromashift-settings',
     completedLevels: 'chromashift-completed-levels' // Add storage key for completed levels
-  },
-  // Pre-defined boards moved to boards.js
-  predefinedBoards: PredefinedBoards
+  }
 };
 
 // Game state
@@ -51,6 +49,7 @@ const GameState = {
   gameActive: false,   // Whether a game is in progress
   initialColor: '',    // Store the initial color to handle the same-color bug
   currentLevel: 1,     // Current level (1-20)
+  currentSeed: null,   // Current random seed for board generation
 
   // Load saved settings and scores
   init() {
@@ -134,6 +133,9 @@ const GameState = {
     this.activeTiles = 0;
     this.gameActive = true;
     this.initialColor = '';
+    
+    // Generate a new random seed for board generation
+    this.currentSeed = Math.floor(Math.random() * 10000);
   }
 };
 
@@ -202,7 +204,7 @@ const UI = {
     this.levelDifficulty.className = 'level-difficulty';
     
     // Get the difficulty for level 1
-    const difficultyText = BoardDifficulty[1] || "";
+    const difficultyText = DIFFICULTY_LEVELS[1].name || "קל מאוד";
     this.levelDifficulty.textContent = difficultyText;
     
     // Add level display and difficulty to container
@@ -276,7 +278,7 @@ const UI = {
       this.levelDisplay.innerHTML = `שלב: <span>${GameState.currentLevel}</span> / 20`;
       
       // Update the difficulty label
-      const difficultyText = BoardDifficulty[GameState.currentLevel] || "";
+      const difficultyText = DIFFICULTY_LEVELS[GameState.currentLevel]?.name || "";
       this.levelDifficulty.textContent = difficultyText;
     }
     
@@ -394,42 +396,32 @@ const Game = {
     UI.boardEl.innerHTML = '';
     UI.boardEl.style.gridTemplateColumns = `repeat(${boardSize}, ${tileSize}px)`;
 
-    // Determine if we're using a predefined board or creating a random one
-    if (!randomBoard && GameState.currentLevel > 0) {
-      // Use predefined board (index is level - 1)
-      const boardIndex = GameState.currentLevel - 1;
-      const predefinedBoard = GameConfig.predefinedBoards[boardIndex];
+    // Determine the difficulty level for the board
+    let difficultyLevel = GameState.currentLevel;
+    if (randomBoard || GameState.currentLevel === 0) {
+      // For random board mode, choose a random difficulty between 1-20
+      difficultyLevel = Math.floor(Math.random() * 20) + 1;
+    }
 
-      for (let y = 0; y < boardSize; y++) {
-        GameState.board[y] = [];
-        for (let x = 0; x < boardSize; x++) {
-          // Get color from predefined board
-          const color = predefinedBoard[y][x];
-          GameState.board[y][x] = color;
+    // Generate the board using our dynamic board generator
+    const generatedBoard = generateBoard(boardSize, difficultyLevel, GameState.currentSeed);
 
-          // Create a tile element
-          this.createTileElement(x, y, color, tileSize);
-        }
-      }
-    } else {
-      // Create random board
-      for (let y = 0; y < boardSize; y++) {
-        GameState.board[y] = [];
-        for (let x = 0; x < boardSize; x++) {
-          // Randomly select a color
-          const colorIndex = Math.floor(Math.random() * GameConfig.colors.length);
-          const color = GameConfig.colors[colorIndex].hex;
-          GameState.board[y][x] = color;
+    // Add the generated board to the game state
+    for (let y = 0; y < boardSize; y++) {
+      GameState.board[y] = [];
+      for (let x = 0; x < boardSize; x++) {
+        const color = generatedBoard[y][x];
+        GameState.board[y][x] = color;
 
-          // Create a tile element
-          this.createTileElement(x, y, color, tileSize);
-        }
+        // Create a tile element
+        this.createTileElement(x, y, color, tileSize);
       }
     }
 
-    // The top-right tile is owned by default (fixing corner direction)
+    // The top-left tile is owned by default (RTL in Hebrew version means right-top)
     GameState.owned[0][boardSize - 1] = true;
     GameState.activeTiles = 1;
+
     // Store initial color to fix the same-color bug
     GameState.initialColor = GameState.board[0][boardSize - 1];
     this.updateBoard();
