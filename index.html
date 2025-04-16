@@ -28,6 +28,7 @@
 
         <div class="controls">
           <button id="newGameBtn">משחק חדש</button>
+          <button id="scoreboardBtn">טבלת שיאים</button>
           <button id="helpBtn">הוראות</button>
         </div>
       </main>
@@ -57,6 +58,22 @@
           <div class="win-buttons">
             <!-- Buttons will be dynamically created in script.js -->
           </div>
+        </div>
+      </div>
+
+      <div id="scoreboardModal" class="modal hidden">
+        <div class="modal-content">
+          <h2>טבלת שיאים</h2>
+          <div class="share-buttons">
+            <h3>שתף את ההישגים שלך</h3>
+            <div class="social-buttons">
+              <button id="shareWhatsApp" class="share-btn whatsapp">WhatsApp</button>
+              <button id="shareInstagram" class="share-btn instagram">Instagram</button>
+              <button id="shareFacebook" class="share-btn facebook">Facebook</button>
+            </div>
+          </div>
+          <div id="scoreboardContent"></div>
+          <button id="closeScoreboard">סגור</button>
         </div>
       </div>
     </div>

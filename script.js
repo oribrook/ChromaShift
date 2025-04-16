@@ -132,6 +132,21 @@ const GameState = {
     return this.bestScores[scoreKey] || '-';
   },
 
+  // Get all scores for scoreboard
+  getAllScores() {
+    const scores = [];
+    for (let level = 1; level <= 20; level++) {
+      const scoreKey = `level_${level}`;
+      const score = this.bestScores[scoreKey] || null;
+      scores.push({
+        level,
+        score,
+        difficulty: DIFFICULTY_LEVELS[level]?.name || ""
+      });
+    }
+    return scores;
+  },
+
   // Reset for a new game
   reset() {
     this.board = [];
@@ -154,6 +169,13 @@ const UI = {
   bestScoreEl: document.getElementById('bestScore').querySelector('span'),
   newGameBtn: document.getElementById('newGameBtn'),
   helpBtn: document.getElementById('helpBtn'),
+  scoreboardBtn: document.getElementById('scoreboardBtn'),
+  scoreboardModal: document.getElementById('scoreboardModal'),
+  scoreboardContent: document.getElementById('scoreboardContent'),
+  closeScoreboardBtn: document.getElementById('closeScoreboard'),
+  shareWhatsAppBtn: document.getElementById('shareWhatsApp'),
+  shareInstagramBtn: document.getElementById('shareInstagram'),
+  shareFacebookBtn: document.getElementById('shareFacebook'),
   randomBoardBtn: null, // Will be created later
   levelDisplay: null,   // Will be created later
   levelDifficulty: null, // Will be created for the difficulty label
@@ -180,6 +202,13 @@ const UI = {
     this.newGameBtn.addEventListener('click', () => Game.startNewGame());
     this.helpBtn.addEventListener('click', () => this.showInstructions());
     this.closeInstructionsBtn.addEventListener('click', () => this.hideInstructions());
+    
+    // Add scoreboard event listeners
+    this.scoreboardBtn.addEventListener('click', () => this.showScoreboard());
+    this.closeScoreboardBtn.addEventListener('click', () => this.hideScoreboard());
+    this.shareWhatsAppBtn.addEventListener('click', () => this.shareScores('whatsapp'));
+    this.shareInstagramBtn.addEventListener('click', () => this.shareScores('instagram'));
+    this.shareFacebookBtn.addEventListener('click', () => this.shareScores('facebook'));
 
     // Remove board size select as we now have a fixed size
     const boardSizeSelect = document.getElementById('boardSizeSelect');
@@ -435,6 +464,91 @@ const UI = {
   // Hide win modal
   hideWinModal() {
     this.winModal.classList.add('hidden');
+  },
+  
+  // Show scoreboard modal
+  showScoreboard() {
+    // Generate scoreboard content
+    const scores = GameState.getAllScores();
+    let html = '<table class="scores-table"><thead><tr>' +
+               '<th>שלב</th>' +
+               '<th>רמת קושי</th>' +
+               '<th>שיא אישי</th>' +
+               '</tr></thead><tbody>';
+    
+    scores.forEach(item => {
+      html += `<tr class="${!item.score ? 'not-played' : ''}">
+                <td>${item.level}</td>
+                <td>${item.difficulty}</td>
+                <td>${item.score || '-'}</td>
+              </tr>`;
+    });
+    
+    html += '</tbody></table>';
+    this.scoreboardContent.innerHTML = html;
+    this.scoreboardModal.classList.remove('hidden');
+    
+    // If sound manager is available, play button sound
+    if (window.SoundManager && window.SoundManager.playButtonSound) {
+      window.SoundManager.playButtonSound();
+    }
+  },
+
+  // Hide scoreboard modal
+  hideScoreboard() {
+    this.scoreboardModal.classList.add('hidden');
+  },
+
+  // Share scores to social platforms
+  shareScores(platform) {
+    // If sound manager is available and has share sound, play it
+    if (window.SoundManager && window.SoundManager.sounds && window.SoundManager.sounds.share) {
+      window.SoundManager.sounds.share.play();
+    } else if (window.SoundManager && window.SoundManager.playButtonSound) {
+      // Fallback to button sound if share sound isn't available
+      window.SoundManager.playButtonSound();
+    }
+    
+    // Create share text
+    const scores = GameState.getAllScores();
+    let shareText = "הישגים שלי במשחק כרומשיפט:\n\n";
+    
+    // Add scores that have been played
+    const playedScores = scores.filter(score => score.score !== null);
+    
+    if (playedScores.length === 0) {
+      shareText += "טרם השלמתי שלבים\n";
+    } else {
+      playedScores.forEach(item => {
+        shareText += `שלב ${item.level} (${item.difficulty}): ${item.score} מהלכים\n`;
+      });
+    }
+    
+    shareText += "\nבואו לשחק: [כתובת האתר כאן]";
+    
+    // Share based on platform
+    let shareUrl = '';
+    switch (platform) {
+      case 'whatsapp':
+        shareUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+        break;
+      case 'facebook':
+        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(shareText)}`;
+        break;
+      case 'instagram':
+        // Instagram doesn't have a direct share URL, so we'll copy to clipboard and alert
+        navigator.clipboard.writeText(shareText).then(() => {
+          alert('הטקסט הועתק ללוח. פתח את אינסטגרם ידנית והדבק את הטקסט בסטורי או בפוסט.');
+        }).catch(err => {
+          console.error('Failed to copy text: ', err);
+          alert('לא ניתן להעתיק את הטקסט. נסה שיתוף בדרך אחרת.');
+        });
+        return;
+    }
+    
+    if (shareUrl) {
+      window.open(shareUrl, '_blank');
+    }
   }
 };
 
@@ -658,56 +772,56 @@ const Game = {
     return false; // No new tiles would be acquired
   },
 
-  // Flood fill algorithm
-  floodFill(newColor) {
-    const { board, owned, boardSize } = GameState;
-    const previousActiveTiles = GameState.activeTiles;
+  // Flood fill algorithm (continued)
+floodFill(newColor) {
+  const { board, owned, boardSize } = GameState;
+  const previousActiveTiles = GameState.activeTiles;
 
-    // First change all owned tiles to the new color
-    for (let y = 0; y < boardSize; y++) {
-      for (let x = 0; x < boardSize; x++) {
-        if (owned[y][x]) {
-          board[y][x] = newColor;
-        }
+  // First change all owned tiles to the new color
+  for (let y = 0; y < boardSize; y++) {
+    for (let x = 0; x < boardSize; x++) {
+      if (owned[y][x]) {
+        board[y][x] = newColor;
       }
     }
+  }
 
-    // Keep expanding until no more tiles can be claimed
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (let y = 0; y < boardSize; y++) {
-        for (let x = 0; x < boardSize; x++) {
-          if (!owned[y][x]) {
-            // Check if any neighboring tile is owned and has the same color
-            const neighbors = this.getNeighbors(x, y);
-            for (const [nx, ny] of neighbors) {
-              if (owned[ny][nx] && board[y][x] === newColor) {
-                owned[y][x] = true;
-                GameState.activeTiles++;
+  // Keep expanding until no more tiles can be claimed
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let y = 0; y < boardSize; y++) {
+      for (let x = 0; x < boardSize; x++) {
+        if (!owned[y][x]) {
+          // Check if any neighboring tile is owned and has the same color
+          const neighbors = this.getNeighbors(x, y);
+          for (const [nx, ny] of neighbors) {
+            if (owned[ny][nx] && board[y][x] === newColor) {
+              owned[y][x] = true;
+              GameState.activeTiles++;
 
-                // Find the tile element and add the animation class
-                const tileEl = document.querySelector(`.tile[data-x="${x}"][data-y="${y}"]`);
-                if (tileEl) {
-                  tileEl.classList.add('newly-owned');
-                  // Remove the class after animation completes to allow retriggering
-                  setTimeout(() => {
-                    tileEl.classList.remove('newly-owned');
-                  }, 500);
-                }
-
-                changed = true;
-                break;
+              // Find the tile element and add the animation class
+              const tileEl = document.querySelector(`.tile[data-x="${x}"][data-y="${y}"]`);
+              if (tileEl) {
+                tileEl.classList.add('newly-owned');
+                // Remove the class after animation completes to allow retriggering
+                setTimeout(() => {
+                  tileEl.classList.remove('newly-owned');
+                }, 500);
               }
+
+              changed = true;
+              break;
             }
           }
         }
       }
     }
+  }
 
-    // If no new tiles were claimed, no need to update the board
-    return GameState.activeTiles > previousActiveTiles;
-  },
+  // If no new tiles were claimed, no need to update the board
+  return GameState.activeTiles > previousActiveTiles;
+},
 
   // Get neighboring tile coordinates
   getNeighbors(x, y) {
