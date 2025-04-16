@@ -3,17 +3,24 @@
  * A color-based puzzle game where players flood fill the board to capture all tiles.
  */
 
+// Global color variables
+const COLOR_RED = '#e74c3c';
+const COLOR_BLUE = '#3498db';
+const COLOR_YELLOW = '#f1c40f';
+const COLOR_GREEN = '#2ecc71';
+const COLOR_PURPLE = '#9b59b6';
+
 // Game configuration
 const GameConfig = {
-  // Default color palette - can be extended or customized
+  // Color palette using global vars
   colors: [
-    { hex: '#e74c3c', name: 'אדום' },    // Red
-    { hex: '#3498db', name: 'כחול' },    // Blue
-    { hex: '#f1c40f', name: 'צהוב' },    // Yellow
-    { hex: '#2ecc71', name: 'ירוק' },    // Green
-    { hex: '#9b59b6', name: 'סגול' }     // Purple
+    { hex: COLOR_RED, name: 'אדום' },    // Red
+    { hex: COLOR_BLUE, name: 'כחול' },    // Blue
+    { hex: COLOR_YELLOW, name: 'צהוב' },    // Yellow
+    { hex: COLOR_GREEN, name: 'ירוק' },    // Green
+    { hex: COLOR_PURPLE, name: 'סגול' }     // Purple
   ],
-  defaultBoardSize: 5,
+  boardSize: 6, // Fixed board size to 6x6
   // Dynamic tile size based on screen size
   get tileSize() {
     // Responsive tile sizing
@@ -23,7 +30,190 @@ const GameConfig = {
   storage: {
     bestScores: 'chromashift-best-scores',
     settings: 'chromashift-settings'
-  }
+  },
+  // Pre-defined board layouts (20 boards)
+  predefinedBoards: [
+    // Board 1
+    [
+      [COLOR_RED, COLOR_BLUE, COLOR_YELLOW, COLOR_GREEN, COLOR_PURPLE, COLOR_RED],
+      [COLOR_BLUE, COLOR_GREEN, COLOR_RED, COLOR_PURPLE, COLOR_YELLOW, COLOR_BLUE],
+      [COLOR_YELLOW, COLOR_RED, COLOR_PURPLE, COLOR_BLUE, COLOR_GREEN, COLOR_YELLOW],
+      [COLOR_GREEN, COLOR_PURPLE, COLOR_BLUE, COLOR_YELLOW, COLOR_RED, COLOR_GREEN],
+      [COLOR_PURPLE, COLOR_YELLOW, COLOR_GREEN, COLOR_RED, COLOR_BLUE, COLOR_PURPLE],
+      [COLOR_RED, COLOR_BLUE, COLOR_YELLOW, COLOR_GREEN, COLOR_PURPLE, COLOR_RED]
+    ],
+    // Board 2
+    [
+      [COLOR_BLUE, COLOR_RED, COLOR_BLUE, COLOR_GREEN, COLOR_YELLOW, COLOR_PURPLE],
+      [COLOR_YELLOW, COLOR_PURPLE, COLOR_RED, COLOR_BLUE, COLOR_GREEN, COLOR_RED],
+      [COLOR_GREEN, COLOR_BLUE, COLOR_YELLOW, COLOR_PURPLE, COLOR_RED, COLOR_BLUE],
+      [COLOR_RED, COLOR_GREEN, COLOR_PURPLE, COLOR_YELLOW, COLOR_BLUE, COLOR_GREEN],
+      [COLOR_PURPLE, COLOR_YELLOW, COLOR_GREEN, COLOR_RED, COLOR_PURPLE, COLOR_YELLOW],
+      [COLOR_BLUE, COLOR_RED, COLOR_BLUE, COLOR_GREEN, COLOR_RED, COLOR_BLUE]
+    ],
+    // Board 3
+    [
+      [COLOR_GREEN, COLOR_GREEN, COLOR_YELLOW, COLOR_BLUE, COLOR_PURPLE, COLOR_RED],
+      [COLOR_RED, COLOR_BLUE, COLOR_PURPLE, COLOR_GREEN, COLOR_YELLOW, COLOR_BLUE],
+      [COLOR_YELLOW, COLOR_PURPLE, COLOR_RED, COLOR_YELLOW, COLOR_BLUE, COLOR_GREEN],
+      [COLOR_BLUE, COLOR_RED, COLOR_GREEN, COLOR_PURPLE, COLOR_RED, COLOR_YELLOW],
+      [COLOR_PURPLE, COLOR_YELLOW, COLOR_BLUE, COLOR_RED, COLOR_GREEN, COLOR_PURPLE],
+      [COLOR_GREEN, COLOR_BLUE, COLOR_YELLOW, COLOR_PURPLE, COLOR_RED, COLOR_GREEN]
+    ],
+    // Board 4
+    [
+      [COLOR_PURPLE, COLOR_YELLOW, COLOR_RED, COLOR_BLUE, COLOR_GREEN, COLOR_PURPLE],
+      [COLOR_RED, COLOR_BLUE, COLOR_GREEN, COLOR_PURPLE, COLOR_YELLOW, COLOR_RED],
+      [COLOR_GREEN, COLOR_PURPLE, COLOR_YELLOW, COLOR_RED, COLOR_BLUE, COLOR_GREEN],
+      [COLOR_BLUE, COLOR_RED, COLOR_PURPLE, COLOR_GREEN, COLOR_YELLOW, COLOR_BLUE],
+      [COLOR_YELLOW, COLOR_GREEN, COLOR_BLUE, COLOR_YELLOW, COLOR_RED, COLOR_PURPLE],
+      [COLOR_PURPLE, COLOR_YELLOW, COLOR_RED, COLOR_BLUE, COLOR_GREEN, COLOR_YELLOW]
+    ],
+    // Board 5
+    [
+      [COLOR_YELLOW, COLOR_RED, COLOR_PURPLE, COLOR_GREEN, COLOR_BLUE, COLOR_YELLOW],
+      [COLOR_BLUE, COLOR_YELLOW, COLOR_RED, COLOR_BLUE, COLOR_PURPLE, COLOR_GREEN],
+      [COLOR_PURPLE, COLOR_GREEN, COLOR_BLUE, COLOR_YELLOW, COLOR_RED, COLOR_BLUE],
+      [COLOR_RED, COLOR_BLUE, COLOR_YELLOW, COLOR_PURPLE, COLOR_GREEN, COLOR_RED],
+      [COLOR_GREEN, COLOR_PURPLE, COLOR_RED, COLOR_BLUE, COLOR_YELLOW, COLOR_PURPLE],
+      [COLOR_BLUE, COLOR_RED, COLOR_GREEN, COLOR_YELLOW, COLOR_PURPLE, COLOR_BLUE]
+    ],
+    // Board 6
+    [
+      [COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_YELLOW, COLOR_PURPLE, COLOR_RED],
+      [COLOR_PURPLE, COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_GREEN, COLOR_PURPLE],
+      [COLOR_BLUE, COLOR_PURPLE, COLOR_RED, COLOR_GREEN, COLOR_YELLOW, COLOR_BLUE],
+      [COLOR_GREEN, COLOR_BLUE, COLOR_PURPLE, COLOR_RED, COLOR_PURPLE, COLOR_GREEN],
+      [COLOR_YELLOW, COLOR_GREEN, COLOR_BLUE, COLOR_PURPLE, COLOR_RED, COLOR_YELLOW],
+      [COLOR_RED, COLOR_YELLOW, COLOR_GREEN, COLOR_BLUE, COLOR_GREEN, COLOR_RED]
+    ],
+    // Board 7
+    [
+      [COLOR_BLUE, COLOR_PURPLE, COLOR_YELLOW, COLOR_RED, COLOR_GREEN, COLOR_BLUE],
+      [COLOR_GREEN, COLOR_BLUE, COLOR_PURPLE, COLOR_YELLOW, COLOR_RED, COLOR_GREEN],
+      [COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_PURPLE, COLOR_YELLOW, COLOR_RED],
+      [COLOR_YELLOW, COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_PURPLE, COLOR_YELLOW],
+      [COLOR_PURPLE, COLOR_YELLOW, COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_PURPLE],
+      [COLOR_BLUE, COLOR_PURPLE, COLOR_YELLOW, COLOR_RED, COLOR_GREEN, COLOR_BLUE]
+    ],
+    // Board 8
+    [
+      [COLOR_PURPLE, COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_YELLOW, COLOR_PURPLE],
+      [COLOR_YELLOW, COLOR_PURPLE, COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_YELLOW],
+      [COLOR_BLUE, COLOR_YELLOW, COLOR_PURPLE, COLOR_RED, COLOR_GREEN, COLOR_BLUE],
+      [COLOR_GREEN, COLOR_BLUE, COLOR_YELLOW, COLOR_PURPLE, COLOR_RED, COLOR_GREEN],
+      [COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_YELLOW, COLOR_PURPLE, COLOR_RED],
+      [COLOR_PURPLE, COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_YELLOW, COLOR_PURPLE]
+    ],
+    // Board 9
+    [
+      [COLOR_GREEN, COLOR_YELLOW, COLOR_PURPLE, COLOR_RED, COLOR_BLUE, COLOR_GREEN],
+      [COLOR_BLUE, COLOR_GREEN, COLOR_YELLOW, COLOR_PURPLE, COLOR_RED, COLOR_BLUE],
+      [COLOR_RED, COLOR_BLUE, COLOR_GREEN, COLOR_YELLOW, COLOR_PURPLE, COLOR_RED],
+      [COLOR_PURPLE, COLOR_RED, COLOR_BLUE, COLOR_GREEN, COLOR_YELLOW, COLOR_PURPLE],
+      [COLOR_YELLOW, COLOR_PURPLE, COLOR_RED, COLOR_BLUE, COLOR_GREEN, COLOR_YELLOW],
+      [COLOR_GREEN, COLOR_YELLOW, COLOR_PURPLE, COLOR_RED, COLOR_BLUE, COLOR_GREEN]
+    ],
+    // Board 10
+    [
+      [COLOR_YELLOW, COLOR_BLUE, COLOR_RED, COLOR_GREEN, COLOR_PURPLE, COLOR_YELLOW],
+      [COLOR_RED, COLOR_YELLOW, COLOR_BLUE, COLOR_RED, COLOR_GREEN, COLOR_PURPLE],
+      [COLOR_GREEN, COLOR_RED, COLOR_YELLOW, COLOR_BLUE, COLOR_RED, COLOR_GREEN],
+      [COLOR_PURPLE, COLOR_GREEN, COLOR_RED, COLOR_YELLOW, COLOR_BLUE, COLOR_RED],
+      [COLOR_BLUE, COLOR_PURPLE, COLOR_GREEN, COLOR_RED, COLOR_YELLOW, COLOR_BLUE],
+      [COLOR_YELLOW, COLOR_BLUE, COLOR_PURPLE, COLOR_GREEN, COLOR_RED, COLOR_YELLOW]
+    ],
+    // Board 11
+    [
+      [COLOR_RED, COLOR_RED, COLOR_BLUE, COLOR_BLUE, COLOR_YELLOW, COLOR_GREEN],
+      [COLOR_RED, COLOR_BLUE, COLOR_BLUE, COLOR_YELLOW, COLOR_GREEN, COLOR_PURPLE],
+      [COLOR_BLUE, COLOR_BLUE, COLOR_YELLOW, COLOR_GREEN, COLOR_PURPLE, COLOR_RED],
+      [COLOR_BLUE, COLOR_YELLOW, COLOR_GREEN, COLOR_PURPLE, COLOR_RED, COLOR_RED],
+      [COLOR_YELLOW, COLOR_GREEN, COLOR_PURPLE, COLOR_RED, COLOR_RED, COLOR_BLUE],
+      [COLOR_GREEN, COLOR_PURPLE, COLOR_RED, COLOR_RED, COLOR_BLUE, COLOR_BLUE]
+    ],
+    // Board 12
+    [
+      [COLOR_PURPLE, COLOR_PURPLE, COLOR_GREEN, COLOR_GREEN, COLOR_RED, COLOR_RED],
+      [COLOR_PURPLE, COLOR_GREEN, COLOR_GREEN, COLOR_RED, COLOR_RED, COLOR_BLUE],
+      [COLOR_GREEN, COLOR_GREEN, COLOR_RED, COLOR_RED, COLOR_BLUE, COLOR_BLUE],
+      [COLOR_GREEN, COLOR_RED, COLOR_RED, COLOR_BLUE, COLOR_BLUE, COLOR_YELLOW],
+      [COLOR_RED, COLOR_RED, COLOR_BLUE, COLOR_BLUE, COLOR_YELLOW, COLOR_YELLOW],
+      [COLOR_RED, COLOR_BLUE, COLOR_BLUE, COLOR_YELLOW, COLOR_YELLOW, COLOR_PURPLE]
+    ],
+    // Board 13
+    [
+      [COLOR_YELLOW, COLOR_YELLOW, COLOR_PURPLE, COLOR_PURPLE, COLOR_GREEN, COLOR_GREEN],
+      [COLOR_YELLOW, COLOR_PURPLE, COLOR_PURPLE, COLOR_GREEN, COLOR_GREEN, COLOR_BLUE],
+      [COLOR_PURPLE, COLOR_PURPLE, COLOR_GREEN, COLOR_GREEN, COLOR_BLUE, COLOR_BLUE],
+      [COLOR_PURPLE, COLOR_GREEN, COLOR_GREEN, COLOR_BLUE, COLOR_BLUE, COLOR_RED],
+      [COLOR_GREEN, COLOR_GREEN, COLOR_BLUE, COLOR_BLUE, COLOR_RED, COLOR_RED],
+      [COLOR_GREEN, COLOR_BLUE, COLOR_BLUE, COLOR_RED, COLOR_RED, COLOR_YELLOW]
+    ],
+    // Board 14
+    [
+      [COLOR_BLUE, COLOR_BLUE, COLOR_RED, COLOR_RED, COLOR_PURPLE, COLOR_PURPLE],
+      [COLOR_BLUE, COLOR_RED, COLOR_RED, COLOR_PURPLE, COLOR_PURPLE, COLOR_GREEN],
+      [COLOR_RED, COLOR_RED, COLOR_PURPLE, COLOR_PURPLE, COLOR_GREEN, COLOR_GREEN],
+      [COLOR_RED, COLOR_PURPLE, COLOR_PURPLE, COLOR_GREEN, COLOR_GREEN, COLOR_YELLOW],
+      [COLOR_PURPLE, COLOR_PURPLE, COLOR_GREEN, COLOR_GREEN, COLOR_YELLOW, COLOR_YELLOW],
+      [COLOR_PURPLE, COLOR_GREEN, COLOR_GREEN, COLOR_YELLOW, COLOR_YELLOW, COLOR_BLUE]
+    ],
+    // Board 15
+    [
+      [COLOR_GREEN, COLOR_BLUE, COLOR_RED, COLOR_RED, COLOR_YELLOW, COLOR_PURPLE],
+      [COLOR_RED, COLOR_GREEN, COLOR_GREEN, COLOR_YELLOW, COLOR_PURPLE, COLOR_BLUE],
+      [COLOR_BLUE, COLOR_RED, COLOR_YELLOW, COLOR_PURPLE, COLOR_BLUE, COLOR_GREEN],
+      [COLOR_YELLOW, COLOR_PURPLE, COLOR_BLUE, COLOR_GREEN, COLOR_RED, COLOR_RED],
+      [COLOR_PURPLE, COLOR_BLUE, COLOR_GREEN, COLOR_RED, COLOR_RED, COLOR_YELLOW],
+      [COLOR_BLUE, COLOR_GREEN, COLOR_RED, COLOR_RED, COLOR_YELLOW, COLOR_PURPLE]
+    ],
+    // Board 16
+    [
+      [COLOR_YELLOW, COLOR_PURPLE, COLOR_BLUE, COLOR_RED, COLOR_RED, COLOR_GREEN],
+      [COLOR_RED, COLOR_YELLOW, COLOR_PURPLE, COLOR_BLUE, COLOR_GREEN, COLOR_RED],
+      [COLOR_GREEN, COLOR_RED, COLOR_YELLOW, COLOR_PURPLE, COLOR_RED, COLOR_BLUE],
+      [COLOR_BLUE, COLOR_GREEN, COLOR_RED, COLOR_YELLOW, COLOR_BLUE, COLOR_PURPLE],
+      [COLOR_PURPLE, COLOR_BLUE, COLOR_GREEN, COLOR_RED, COLOR_PURPLE, COLOR_YELLOW],
+      [COLOR_YELLOW, COLOR_PURPLE, COLOR_BLUE, COLOR_GREEN, COLOR_RED, COLOR_GREEN]
+    ],
+    // Board 17
+    [
+      [COLOR_GREEN, COLOR_YELLOW, COLOR_RED, COLOR_PURPLE, COLOR_BLUE, COLOR_RED],
+      [COLOR_BLUE, COLOR_RED, COLOR_YELLOW, COLOR_GREEN, COLOR_RED, COLOR_PURPLE],
+      [COLOR_YELLOW, COLOR_PURPLE, COLOR_BLUE, COLOR_RED, COLOR_GREEN, COLOR_YELLOW],
+      [COLOR_RED, COLOR_GREEN, COLOR_PURPLE, COLOR_BLUE, COLOR_YELLOW, COLOR_BLUE],
+      [COLOR_PURPLE, COLOR_BLUE, COLOR_RED, COLOR_YELLOW, COLOR_PURPLE, COLOR_GREEN],
+      [COLOR_RED, COLOR_YELLOW, COLOR_GREEN, COLOR_RED, COLOR_BLUE, COLOR_PURPLE]
+    ],
+    // Board 18
+    [
+      [COLOR_PURPLE, COLOR_RED, COLOR_YELLOW, COLOR_BLUE, COLOR_GREEN, COLOR_YELLOW],
+      [COLOR_GREEN, COLOR_PURPLE, COLOR_BLUE, COLOR_YELLOW, COLOR_RED, COLOR_BLUE],
+      [COLOR_RED, COLOR_GREEN, COLOR_PURPLE, COLOR_RED, COLOR_YELLOW, COLOR_GREEN],
+      [COLOR_YELLOW, COLOR_BLUE, COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_PURPLE],
+      [COLOR_BLUE, COLOR_YELLOW, COLOR_GREEN, COLOR_BLUE, COLOR_PURPLE, COLOR_RED],
+      [COLOR_GREEN, COLOR_RED, COLOR_BLUE, COLOR_PURPLE, COLOR_RED, COLOR_YELLOW]
+    ],
+    // Board 19
+    [
+      [COLOR_RED, COLOR_BLUE, COLOR_YELLOW, COLOR_GREEN, COLOR_RED, COLOR_BLUE],
+      [COLOR_GREEN, COLOR_RED, COLOR_YELLOW, COLOR_RED, COLOR_BLUE, COLOR_YELLOW],
+      [COLOR_BLUE, COLOR_GREEN, COLOR_PURPLE, COLOR_GREEN, COLOR_YELLOW, COLOR_RED],
+      [COLOR_YELLOW, COLOR_BLUE, COLOR_RED, COLOR_PURPLE, COLOR_RED, COLOR_GREEN],
+      [COLOR_RED, COLOR_PURPLE, COLOR_GREEN, COLOR_BLUE, COLOR_GREEN, COLOR_BLUE],
+      [COLOR_PURPLE, COLOR_RED, COLOR_BLUE, COLOR_YELLOW, COLOR_PURPLE, COLOR_YELLOW]
+    ],
+    // Board 20
+    [
+      [COLOR_BLUE, COLOR_YELLOW, COLOR_RED, COLOR_PURPLE, COLOR_GREEN, COLOR_BLUE],
+      [COLOR_RED, COLOR_PURPLE, COLOR_GREEN, COLOR_BLUE, COLOR_YELLOW, COLOR_RED],
+      [COLOR_GREEN, COLOR_BLUE, COLOR_YELLOW, COLOR_RED, COLOR_PURPLE, COLOR_GREEN],
+      [COLOR_YELLOW, COLOR_RED, COLOR_PURPLE, COLOR_GREEN, COLOR_BLUE, COLOR_YELLOW],
+      [COLOR_PURPLE, COLOR_GREEN, COLOR_BLUE, COLOR_YELLOW, COLOR_RED, COLOR_PURPLE],
+      [COLOR_BLUE, COLOR_YELLOW, COLOR_RED, COLOR_PURPLE, COLOR_GREEN, COLOR_BLUE]
+    ]
+  ]
 };
 
 // Game state
@@ -31,11 +221,12 @@ const GameState = {
   board: [],           // Color of each tile
   owned: [],           // Tracking owned tiles
   moveCount: 0,        // Current move counter
-  boardSize: GameConfig.defaultBoardSize,
-  bestScores: {},      // Best scores for each board size
+  boardSize: GameConfig.boardSize,
+  bestScores: {},      // Best scores for each board level
   activeTiles: 0,      // Count of owned tiles (for animation purposes)
   gameActive: false,   // Whether a game is in progress
   initialColor: '',    // Store the initial color to handle the same-color bug
+  currentLevel: 1,     // Current level (1-20)
 
   // Load saved settings and scores
   init() {
@@ -45,13 +236,12 @@ const GameState = {
       this.bestScores = JSON.parse(savedScores);
     }
 
-    // Load saved settings
+    // Load saved level
     const savedSettings = localStorage.getItem(GameConfig.storage.settings);
     if (savedSettings) {
       const settings = JSON.parse(savedSettings);
-      if (settings.boardSize) {
-        this.boardSize = settings.boardSize;
-        document.getElementById('boardSizeSelect').value = settings.boardSize;
+      if (settings.currentLevel) {
+        this.currentLevel = settings.currentLevel;
       }
     }
   },
@@ -59,16 +249,17 @@ const GameState = {
   // Save settings
   saveSettings() {
     const settings = {
-      boardSize: this.boardSize
+      currentLevel: this.currentLevel
     };
     localStorage.setItem(GameConfig.storage.settings, JSON.stringify(settings));
   },
 
   // Update and save best score
-  updateBestScore(size, moves) {
-    const current = this.bestScores[size] || Infinity;
+  updateBestScore(level, moves) {
+    const scoreKey = `level_${level}`;
+    const current = this.bestScores[scoreKey] || Infinity;
     if (moves < current) {
-      this.bestScores[size] = moves;
+      this.bestScores[scoreKey] = moves;
       localStorage.setItem(GameConfig.storage.bestScores, JSON.stringify(this.bestScores));
       return true; // New record
     }
@@ -77,7 +268,8 @@ const GameState = {
 
   // Get current best score for display
   getBestScore() {
-    return this.bestScores[this.boardSize] || '-';
+    const scoreKey = `level_${this.currentLevel}`;
+    return this.bestScores[scoreKey] || '-';
   },
 
   // Reset for a new game
@@ -99,7 +291,10 @@ const UI = {
   bestScoreEl: document.getElementById('bestScore').querySelector('span'),
   newGameBtn: document.getElementById('newGameBtn'),
   helpBtn: document.getElementById('helpBtn'),
-  boardSizeSelect: document.getElementById('boardSizeSelect'),
+  randomBoardBtn: null, // Will be created later
+  levelDisplay: null,   // Will be created later
+  prevLevelBtn: null,   // Will be created later
+  nextLevelBtn: null,   // Will be created later
   instructionsModal: document.getElementById('instructions'),
   closeInstructionsBtn: document.getElementById('closeInstructions'),
   winModal: document.getElementById('winModal'),
@@ -108,6 +303,12 @@ const UI = {
 
   // Initialize UI event listeners
   init() {
+    // Create level navigation UI
+    this.createLevelNavigation();
+    
+    // Create random board button
+    this.createRandomBoardButton();
+    
     this.newGameBtn.addEventListener('click', () => Game.startNewGame());
     this.helpBtn.addEventListener('click', () => this.showInstructions());
     this.closeInstructionsBtn.addEventListener('click', () => this.hideInstructions());
@@ -115,14 +316,87 @@ const UI = {
       this.hideWinModal();
       Game.startNewGame();
     });
-    this.boardSizeSelect.addEventListener('change', (e) => {
-      GameState.boardSize = parseInt(e.target.value);
-      GameState.saveSettings();
-      Game.startNewGame();
-    });
+    
+    // Remove board size select as we now have a fixed size
+    const boardSizeSelect = document.getElementById('boardSizeSelect');
+    if (boardSizeSelect) {
+      boardSizeSelect.remove();
+    }
     
     // Add resize listener for mobile responsiveness
     window.addEventListener('resize', this.handleResize.bind(this));
+  },
+  
+  // Create level navigation UI
+  createLevelNavigation() {
+    const controlsDiv = document.querySelector('.controls');
+    
+    // Create level display
+    this.levelDisplay = document.createElement('div');
+    this.levelDisplay.id = 'levelDisplay';
+    this.levelDisplay.className = 'level-display';
+    this.levelDisplay.innerHTML = `שלב: <span>1</span> / 20`;
+    
+    // Create navigation buttons
+    this.prevLevelBtn = document.createElement('button');
+    this.prevLevelBtn.id = 'prevLevelBtn';
+    this.prevLevelBtn.textContent = 'הקודם';
+    this.prevLevelBtn.addEventListener('click', () => {
+      if (GameState.currentLevel > 1) {
+        GameState.currentLevel--;
+        GameState.saveSettings();
+        this.updateLevelDisplay();
+        Game.startNewGame();
+      }
+    });
+    
+    this.nextLevelBtn = document.createElement('button');
+    this.nextLevelBtn.id = 'nextLevelBtn';
+    this.nextLevelBtn.textContent = 'הבא';
+    this.nextLevelBtn.addEventListener('click', () => {
+      if (GameState.currentLevel < 20) {
+        GameState.currentLevel++;
+        GameState.saveSettings();
+        this.updateLevelDisplay();
+        Game.startNewGame();
+      }
+    });
+    
+    // Create level navigation container
+    const levelNav = document.createElement('div');
+    levelNav.className = 'level-navigation';
+    levelNav.appendChild(this.prevLevelBtn);
+    levelNav.appendChild(this.levelDisplay);
+    levelNav.appendChild(this.nextLevelBtn);
+    
+    // Add to controls before existing elements
+    controlsDiv.insertBefore(levelNav, controlsDiv.firstChild);
+  },
+  
+  // Create random board button
+  createRandomBoardButton() {
+    this.randomBoardBtn = document.createElement('button');
+    this.randomBoardBtn.id = 'randomBoardBtn';
+    this.randomBoardBtn.textContent = 'לוח אקראי';
+    this.randomBoardBtn.addEventListener('click', () => {
+      GameState.currentLevel = 0; // 0 indicates random board
+      GameState.saveSettings();
+      this.updateLevelDisplay();
+      Game.startNewGame(true); // true indicates random board
+    });
+    
+    // Add to controls
+    const controlsDiv = document.querySelector('.controls');
+    controlsDiv.appendChild(this.randomBoardBtn);
+  },
+  
+  // Update level display
+  updateLevelDisplay() {
+    if (GameState.currentLevel === 0) {
+      this.levelDisplay.innerHTML = `לוח אקראי`;
+    } else {
+      this.levelDisplay.innerHTML = `שלב: <span>${GameState.currentLevel}</span> / 20`;
+    }
   },
   
   // Handle window resize for mobile responsiveness
@@ -198,6 +472,7 @@ const Game = {
     GameState.init();
     UI.init();
     UI.createColorPicker();
+    UI.updateLevelDisplay();
     this.startNewGame();
     
     // Show instructions on first visit
@@ -208,42 +483,51 @@ const Game = {
   },
 
   // Start a new game
-  startNewGame() {
+  startNewGame(randomBoard = false) {
     GameState.reset();
-    this.createBoard();
+    this.createBoard(randomBoard);
     UI.updateMoveCounter();
     UI.updateBestScore();
   },
 
   // Create the game board
-  createBoard() {
+  createBoard(randomBoard = false) {
     const { boardSize } = GameState;
     const tileSize = GameConfig.tileSize;
     
     UI.boardEl.innerHTML = '';
     UI.boardEl.style.gridTemplateColumns = `repeat(${boardSize}, ${tileSize}px)`;
 
-    for (let y = 0; y < boardSize; y++) {
-      GameState.board[y] = [];
-      for (let x = 0; x < boardSize; x++) {
-        // Randomly select a color
-        const colorIndex = Math.floor(Math.random() * GameConfig.colors.length);
-        const color = GameConfig.colors[colorIndex].hex;
-        GameState.board[y][x] = color;
+    // Determine if we're using a predefined board or creating a random one
+    if (!randomBoard && GameState.currentLevel > 0) {
+      // Use predefined board (index is level - 1)
+      const boardIndex = GameState.currentLevel - 1;
+      const predefinedBoard = GameConfig.predefinedBoards[boardIndex];
+      
+      for (let y = 0; y < boardSize; y++) {
+        GameState.board[y] = [];
+        for (let x = 0; x < boardSize; x++) {
+          // Get color from predefined board
+          const color = predefinedBoard[y][x];
+          GameState.board[y][x] = color;
 
-        // Create a tile element
-        const tile = document.createElement('div');
-        tile.className = 'tile';
-        tile.style.backgroundColor = color;
-        tile.style.width = `${tileSize}px`;
-        tile.style.height = `${tileSize}px`;
-        tile.dataset.x = x;
-        tile.dataset.y = y;
-        
-        // Add click event to surrounding tiles for faster progress
-        tile.addEventListener('click', () => this.handleTileClick(x, y));
-        
-        UI.boardEl.appendChild(tile);
+          // Create a tile element
+          this.createTileElement(x, y, color, tileSize);
+        }
+      }
+    } else {
+      // Create random board
+      for (let y = 0; y < boardSize; y++) {
+        GameState.board[y] = [];
+        for (let x = 0; x < boardSize; x++) {
+          // Randomly select a color
+          const colorIndex = Math.floor(Math.random() * GameConfig.colors.length);
+          const color = GameConfig.colors[colorIndex].hex;
+          GameState.board[y][x] = color;
+
+          // Create a tile element
+          this.createTileElement(x, y, color, tileSize);
+        }
       }
     }
 
@@ -253,6 +537,22 @@ const Game = {
     // Store initial color to fix the same-color bug
     GameState.initialColor = GameState.board[0][boardSize - 1];
     this.updateBoard();
+  },
+  
+  // Create a single tile element
+  createTileElement(x, y, color, tileSize) {
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    tile.style.backgroundColor = color;
+    tile.style.width = `${tileSize}px`;
+    tile.style.height = `${tileSize}px`;
+    tile.dataset.x = x;
+    tile.dataset.y = y;
+    
+    // Add click event to surrounding tiles for faster progress
+    tile.addEventListener('click', () => this.handleTileClick(x, y));
+    
+    UI.boardEl.appendChild(tile);
   },
   
   // Handle tile click (for surrounding tiles)
@@ -436,8 +736,13 @@ const Game = {
     
     if (allOwned) {
       GameState.gameActive = false;
-      const isNewRecord = GameState.updateBestScore(GameState.boardSize, GameState.moveCount);
-      UI.updateBestScore();
+      
+      // Only save best score for predefined levels, not random boards
+      let isNewRecord = false;
+      if (GameState.currentLevel > 0) {
+        isNewRecord = GameState.updateBestScore(GameState.currentLevel, GameState.moveCount);
+        UI.updateBestScore();
+      }
       
       // Short delay before showing win modal for better UX
       setTimeout(() => {

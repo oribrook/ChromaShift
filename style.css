@@ -136,15 +136,22 @@ button:hover {
   background-color: var(--button-hover);
 }
 
-select {
-  padding: 10px;
+/* Level navigation styles */
+.level-navigation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.level-display {
+  font-size: 1.2rem;
+  font-weight: bold;
+  padding: 5px 15px;
+  background-color: var(--secondary-color);
+  color: white;
   border-radius: 6px;
-  border: 1px solid var(--secondary-color);
-  font-family: 'Heebo', sans-serif;
-  font-size: 1rem;
-  background-color: white;
-  cursor: pointer;
-  box-shadow: 0 3px 6px var(--shadow-color);
+  box-shadow: 0 2px 4px var(--shadow-color);
 }
 
 /* Modal styles */
@@ -204,6 +211,15 @@ select {
   animation: pulse 0.5s ease;
 }
 
+/* Random board button styling */
+#randomBoardBtn {
+  background-color: var(--accent-color);
+}
+
+#randomBoardBtn:hover {
+  background-color: #e84393;
+}
+
 /* Mobile Responsive Styles */
 @media (max-width: 600px) {
   h1 {
@@ -234,6 +250,11 @@ select {
   
   .modal-content {
     padding: 20px;
+  }
+  
+  .level-navigation {
+    flex-wrap: wrap;
+    justify-content: center;
   }
 }
 
