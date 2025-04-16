@@ -9,6 +9,8 @@
   --shadow-color: rgba(0, 0, 0, 0.1);
   --modal-bg: rgba(0, 0, 0, 0.5);
   --button-hover: #5549d7;
+  --difficulty-color: #e67e22;
+  --disabled-button: #bdc3c7;
 }
 
 * {
@@ -136,12 +138,31 @@ button:hover {
   background-color: var(--button-hover);
 }
 
+/* Disabled button style */
+button.disabled {
+  background-color: var(--disabled-button);
+  cursor: not-allowed;
+}
+
+button.disabled:hover {
+  background-color: var(--disabled-button);
+  transform: none;
+}
+
 /* Level navigation styles */
 .level-navigation {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 15px;
+}
+
+/* Level container styles */
+.level-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
 }
 
 .level-display {
@@ -152,6 +173,17 @@ button:hover {
   color: white;
   border-radius: 6px;
   box-shadow: 0 2px 4px var(--shadow-color);
+}
+
+/* Difficulty label styles */
+.level-difficulty {
+  font-size: 0.95rem;
+  padding: 3px 10px;
+  background-color: var(--difficulty-color);
+  color: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px var(--shadow-color);
+  font-weight: bold;
 }
 
 /* Modal styles */
@@ -255,6 +287,16 @@ button:hover {
   .level-navigation {
     flex-wrap: wrap;
     justify-content: center;
+  }
+  
+  .level-display {
+    font-size: 1rem;
+    padding: 4px 10px;
+  }
+  
+  .level-difficulty {
+    font-size: 0.85rem;
+    padding: 2px 8px;
   }
 }
 
