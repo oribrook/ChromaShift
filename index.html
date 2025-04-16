@@ -46,19 +46,6 @@
             </li>
             <li>המשיכו עד שכל הלוח בשליטתכם.</li>
           </ul>
-
-          <!-- <h2>הוראות המשחק</h2>
-          <p>ברוכים הבאים לכרומשיפט - משחק פאזל אסטרטגי מבוסס צבעים!</p>
-          <ul>
-            <li>המטרה היא לכבוש את כל לוח המשחק בכמה שפחות מהלכים.</li>
-            <li>אתם מתחילים מהפינה השמאלית העליונה.</li>
-            <li>בכל תור בחרו צבע - כל האריחים שבבעלותכם יהפכו לאותו צבע.</li>
-            <li>אם אריח סמוך הוא באותו צבע שבחרתם, הוא מצטרף לשטח שלכם!</li>
-            <li>
-              ניתן גם ללחוץ על אריחים סמוכים לשטח שלכם כדי לבחור את הצבע שלהם.
-            </li>
-            <li>המשיכו לבחור צבעים עד שכל הלוח בבעלותכם.</li>
-          </ul> -->
           <button id="closeInstructions">הבנתי</button>
         </div>
       </div>
@@ -67,13 +54,25 @@
         <div class="modal-content">
           <h2>ניצחון! 🎉</h2>
           <p>סיימת את המשחק ב-<span id="finalMoves"></span> מהלכים!</p>
-          <button id="playAgainBtn">שחק שוב</button>
+          <div class="win-buttons">
+            <!-- Buttons will be dynamically created in script.js -->
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Import board definitions first, then main script -->
+    <!-- Audio initialization helper (now integrated into sounds.js) -->
+    
+    <!-- Import board definitions first -->
     <script type="module" src="boards.js"></script>
+    
+    <!-- Main game script -->
     <script type="module" src="script.js"></script>
+    
+    <!-- Sound module -->
+    <script type="module" src="sounds.js"></script>
+    
+    <!-- Enhancements (properly loads and connects sound system) -->
+    <script type="module" src="enhancements.js"></script>
   </body>
 </html>

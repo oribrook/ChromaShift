@@ -107,6 +107,13 @@ const GameState = {
     return this.completedLevels[level] === true;
   },
 
+  // Get next level number
+  getNextLevel() {
+    // If current level is 0 (random) or already at max, return 1
+    if (this.currentLevel === 0 || this.currentLevel >= 20) return 1;
+    return this.currentLevel + 1;
+  },
+
   // Update and save best score
   updateBestScore(level, moves) {
     const scoreKey = `level_${level}`;
@@ -157,6 +164,7 @@ const UI = {
   winModal: document.getElementById('winModal'),
   finalMovesEl: document.getElementById('finalMoves'),
   playAgainBtn: document.getElementById('playAgainBtn'),
+  nextLevelBtn: null,  // Will be created for continue to next level
 
   // Initialize UI event listeners
   init() {
@@ -166,13 +174,12 @@ const UI = {
     // Create random board button
     this.createRandomBoardButton();
 
+    // Setup the win modal with the Next Level button
+    this.setupWinModal();
+
     this.newGameBtn.addEventListener('click', () => Game.startNewGame());
     this.helpBtn.addEventListener('click', () => this.showInstructions());
     this.closeInstructionsBtn.addEventListener('click', () => this.hideInstructions());
-    this.playAgainBtn.addEventListener('click', () => {
-      this.hideWinModal();
-      Game.startNewGame();
-    });
 
     // Remove board size select as we now have a fixed size
     const boardSizeSelect = document.getElementById('boardSizeSelect');
@@ -182,6 +189,57 @@ const UI = {
 
     // Add resize listener for mobile responsiveness
     window.addEventListener('resize', this.handleResize.bind(this));
+  },
+
+  // Set up the win modal with Next Level button
+  setupWinModal() {
+    // Clear the existing buttons
+    const modalContent = this.winModal.querySelector('.modal-content');
+    
+    // Find the existing Play Again button and remove it
+    if (this.playAgainBtn) {
+      this.playAgainBtn.remove();
+    }
+    
+    // Create buttons container
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.className = 'win-buttons';
+    
+    // Create new Play Again button
+    this.playAgainBtn = document.createElement('button');
+    this.playAgainBtn.id = 'playAgainBtn';
+    this.playAgainBtn.textContent = 'שחק שוב';
+    this.playAgainBtn.addEventListener('click', () => {
+      this.hideWinModal();
+      Game.startNewGame();
+    });
+    
+    // Create Continue to Next Level button
+    this.continueNextLevelBtn = document.createElement('button');
+    this.continueNextLevelBtn.id = 'continueNextLevelBtn';
+    this.continueNextLevelBtn.textContent = 'המשך לשלב הבא';
+    this.continueNextLevelBtn.addEventListener('click', () => {
+      const nextLevel = GameState.getNextLevel();
+      
+      // Check if the next level is unlocked
+      if (GameState.isLevelUnlocked(nextLevel)) {
+        GameState.currentLevel = nextLevel;
+        GameState.saveSettings();
+        this.updateLevelDisplay();
+        this.hideWinModal();
+        Game.startNewGame();
+      } else {
+        // Alert if level is locked - but this shouldn't happen since we'll hide the button
+        alert(`שלב ${nextLevel} עדיין נעול. סיים את השלב הקודם כדי לפתוח אותו.`);
+      }
+    });
+    
+    // Add buttons to container
+    buttonsContainer.appendChild(this.playAgainBtn);
+    buttonsContainer.appendChild(this.continueNextLevelBtn);
+    
+    // Add container to modal
+    modalContent.appendChild(buttonsContainer);
   },
 
   // Create level navigation UI
@@ -297,6 +355,21 @@ const UI = {
     }
   },
 
+  // Update the Next Level button visibility in the win modal
+  updateWinModalButtons() {
+    if (!this.continueNextLevelBtn) return;
+    
+    // For random boards or final level, hide the next level button
+    if (GameState.currentLevel === 0 || GameState.currentLevel >= 20) {
+      this.continueNextLevelBtn.style.display = 'none';
+    } else {
+      const nextLevel = GameState.getNextLevel();
+      // Show the button and update its text
+      this.continueNextLevelBtn.style.display = 'block';
+      this.continueNextLevelBtn.textContent = `המשך לשלב ${nextLevel}`;
+    }
+  },
+
   // Handle window resize for mobile responsiveness
   handleResize() {
     const tileSize = GameConfig.tileSize;
@@ -354,6 +427,8 @@ const UI = {
   // Show win modal
   showWinModal(moves) {
     this.finalMovesEl.textContent = moves;
+    // Update next level button text and visibility
+    this.updateWinModalButtons();
     this.winModal.classList.remove('hidden');
   },
 
@@ -679,4 +754,11 @@ const Game = {
 // Initialize the game when the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', () => {
   Game.init();
+  
+  // Make Game object accessible globally for sound system
+  window.Game = Game;
+  window.GameState = GameState;
 });
+
+// Export the Game object for use by other modules
+export { Game, GameState, UI };

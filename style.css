@@ -11,6 +11,8 @@
   --button-hover: #5549d7;
   --difficulty-color: #e67e22;
   --disabled-button: #bdc3c7;
+  --continue-button-color: #27ae60;
+  --continue-button-hover: #2ecc71;
 }
 
 * {
@@ -36,6 +38,10 @@ body {
 
 header {
   margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
 }
 
 h1 {
@@ -119,6 +125,15 @@ main {
   flex-wrap: wrap;
   gap: 15px;
   margin-top: 20px;
+  /* Make control buttons appear in a row */
+  flex-direction: column;
+  width: 100%;
+  max-width: 300px;
+}
+
+.controls button {
+  width: 100%;
+  margin-bottom: 10px;
 }
 
 button {
@@ -155,6 +170,7 @@ button.disabled:hover {
   align-items: center;
   gap: 10px;
   margin-bottom: 15px;
+  width: 100%;
 }
 
 /* Level container styles */
@@ -163,6 +179,7 @@ button.disabled:hover {
   flex-direction: column;
   align-items: center;
   gap: 5px;
+  flex-grow: 1;
 }
 
 .level-display {
@@ -232,6 +249,26 @@ button.disabled:hover {
   display: none;
 }
 
+/* Win modal styles */
+.win-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+#playAgainBtn {
+  background-color: var(--primary-color);
+}
+
+#continueNextLevelBtn {
+  background-color: var(--continue-button-color);
+}
+
+#continueNextLevelBtn:hover {
+  background-color: var(--continue-button-hover);
+}
+
 /* Animation for when tiles are claimed */
 @keyframes pulse {
   0% { transform: scale(1); }
@@ -250,6 +287,30 @@ button.disabled:hover {
 
 #randomBoardBtn:hover {
   background-color: #e84393;
+}
+
+/* Sound toggle button styling - repositioned */
+.sound-toggle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 40px;
+  background-color: transparent;
+  border: 2px solid var(--primary-color);
+  color: var(--primary-color);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  z-index: 10;
+  transition: background-color 0.3s ease;
+}
+
+.sound-toggle:hover {
+  background-color: rgba(108, 92, 231, 0.1);
 }
 
 /* Mobile Responsive Styles */
