@@ -10,14 +10,15 @@ import { GameState } from './state.js';
 const UI = {
   boardEl: document.getElementById('gameBoard'),
   pickerEl: document.getElementById('colorPicker'),
-  moveEl: document.getElementById('moveCounter').querySelector('span'),
-  bestScoreEl: document.getElementById('bestScore').querySelector('span'),
+  moveEl: document.getElementById('moveCounter').querySelector('.stat-value'),
+  bestScoreEl: document.getElementById('bestScore').querySelector('.stat-value'),
   newGameBtn: document.getElementById('newGameBtn'),
   helpBtn: document.getElementById('helpBtn'),
   scoreboardBtn: document.getElementById('scoreboardBtn'),
   scoreboardModal: document.getElementById('scoreboardModal'),
   scoreboardContent: document.getElementById('scoreboardContent'),
   closeScoreboardBtn: document.getElementById('closeScoreboard'),
+  closeScoreboardXBtn: document.getElementById('closeScoreboardX'),
   shareWhatsAppBtn: document.getElementById('shareWhatsApp'),
   shareInstagramBtn: document.getElementById('shareInstagram'),
   shareFacebookBtn: document.getElementById('shareFacebook'),
@@ -28,7 +29,9 @@ const UI = {
   nextLevelBtn: null,   // Will be created later
   instructionsModal: document.getElementById('instructions'),
   closeInstructionsBtn: document.getElementById('closeInstructions'),
+  closeInstructionsXBtn: document.getElementById('closeInstructionsX'),
   winModal: document.getElementById('winModal'),
+  closeWinModalXBtn: document.getElementById('closeWinModalX'),
   finalMovesEl: document.getElementById('finalMoves'),
   finalGradeEl: null,   // Will be created for displaying grade
   optimalMovesEl: null, // Will be created for displaying optimal moves
@@ -60,19 +63,23 @@ const UI = {
     this.newGameBtn.addEventListener('click', () => this.Game.startNewGame());
     this.helpBtn.addEventListener('click', () => this.showInstructions());
     this.closeInstructionsBtn.addEventListener('click', () => this.hideInstructions());
+    if (this.closeInstructionsXBtn) {
+      this.closeInstructionsXBtn.addEventListener('click', () => this.hideInstructions());
+    }
+    
+    if (this.closeWinModalXBtn) {
+      this.closeWinModalXBtn.addEventListener('click', () => this.hideWinModal());
+    }
 
     // Add scoreboard event listeners
     this.scoreboardBtn.addEventListener('click', () => this.showScoreboard());
     this.closeScoreboardBtn.addEventListener('click', () => this.hideScoreboard());
+    if (this.closeScoreboardXBtn) {
+      this.closeScoreboardXBtn.addEventListener('click', () => this.hideScoreboard());
+    }
     this.shareWhatsAppBtn.addEventListener('click', () => this.shareScores('whatsapp'));
     this.shareInstagramBtn.addEventListener('click', () => this.shareScores('instagram'));
     this.shareFacebookBtn.addEventListener('click', () => this.shareScores('facebook'));
-
-    // Remove board size select as we now have a fixed size
-    const boardSizeSelect = document.getElementById('boardSizeSelect');
-    if (boardSizeSelect) {
-      boardSizeSelect.remove();
-    }
 
     // Add resize listener for mobile responsiveness
     window.addEventListener('resize', this.handleResize.bind(this));
@@ -86,8 +93,18 @@ const UI = {
     // Create optimal moves display element
     this.optimalMovesDisplayEl = document.createElement('div');
     this.optimalMovesDisplayEl.id = 'optimalMovesDisplay';
-    this.optimalMovesDisplayEl.className = 'game-stat';
-    this.optimalMovesDisplayEl.innerHTML = 'מינימום מהלכים: <span>-</span>';
+    this.optimalMovesDisplayEl.className = 'stat-card';
+    
+    const label = document.createElement('span');
+    label.className = 'stat-label';
+    label.textContent = 'מינימום מהלכים';
+    
+    const value = document.createElement('span');
+    value.className = 'stat-value';
+    value.textContent = '-';
+    
+    this.optimalMovesDisplayEl.appendChild(label);
+    this.optimalMovesDisplayEl.appendChild(value);
     
     // Add to container after move counter
     movesContainer.appendChild(this.optimalMovesDisplayEl);
@@ -97,9 +114,9 @@ const UI = {
   updateOptimalMovesDisplay() {
     if (!this.optimalMovesDisplayEl) return;
     
-    const optimalMovesSpan = this.optimalMovesDisplayEl.querySelector('span');
-    if (optimalMovesSpan) {
-      optimalMovesSpan.textContent = GameState.optimalMoves || '-';
+    const optimalMovesValueEl = this.optimalMovesDisplayEl.querySelector('.stat-value');
+    if (optimalMovesValueEl) {
+      optimalMovesValueEl.textContent = GameState.optimalMoves || '-';
     }
   },
 
@@ -114,22 +131,43 @@ const UI = {
     const modalContent = document.createElement('div');
     modalContent.className = 'modal-content';
     
-    // Add header
+    // Create modal backdrop
+    const modalBackdrop = document.createElement('div');
+    modalBackdrop.className = 'modal-backdrop';
+    this.exceededMoveLimitModal.appendChild(modalBackdrop);
+    
+    // Create modal header
+    const modalHeader = document.createElement('div');
+    modalHeader.className = 'modal-header';
+    
     const header = document.createElement('h2');
     header.textContent = 'יותר מדי מהלכים';
-    modalContent.appendChild(header);
+    modalHeader.appendChild(header);
+    
+    const closeButton = document.createElement('button');
+    closeButton.className = 'modal-close';
+    closeButton.setAttribute('aria-label', 'סגור');
+    closeButton.textContent = '✕';
+    closeButton.addEventListener('click', () => this.hideExceededMoveLimitModal());
+    modalHeader.appendChild(closeButton);
+    
+    modalContent.appendChild(modalHeader);
+    
+    // Create modal body
+    const modalBody = document.createElement('div');
+    modalBody.className = 'modal-body';
     
     // Add message
     const message = document.createElement('p');
     message.id = 'exceededMoveLimitMessage';
     message.textContent = 'ביצעת יותר מדי מהלכים. נסה שוב כדי להשלים את השלב בפחות מהלכים.';
-    modalContent.appendChild(message);
+    modalBody.appendChild(message);
     
     // Add optimal moves display
     const optimalMovesInfo = document.createElement('p');
     optimalMovesInfo.id = 'exceededOptimalMoves';
     optimalMovesInfo.textContent = 'מספר מהלכים אופטימלי: ';
-    modalContent.appendChild(optimalMovesInfo);
+    modalBody.appendChild(optimalMovesInfo);
     
     // Create buttons container
     const buttonsContainer = document.createElement('div');
@@ -138,6 +176,7 @@ const UI = {
     // Create retry button (same board)
     const retryButton = document.createElement('button');
     retryButton.id = 'retryExceededBtn';
+    retryButton.className = 'btn btn-primary';
     retryButton.textContent = 'נסה שוב אותו לוח';
     retryButton.addEventListener('click', () => {
       this.hideExceededMoveLimitModal();
@@ -148,6 +187,7 @@ const UI = {
     // Create new board button
     const newBoardButton = document.createElement('button');
     newBoardButton.id = 'newBoardExceededBtn';
+    newBoardButton.className = 'btn btn-accent';
     newBoardButton.textContent = 'לוח חדש';
     newBoardButton.addEventListener('click', () => {
       this.hideExceededMoveLimitModal();
@@ -155,8 +195,9 @@ const UI = {
     });
     buttonsContainer.appendChild(newBoardButton);
     
-    // Add buttons to modal
-    modalContent.appendChild(buttonsContainer);
+    // Add buttons to modal body
+    modalBody.appendChild(buttonsContainer);
+    modalContent.appendChild(modalBody);
     
     // Add content to modal
     this.exceededMoveLimitModal.appendChild(modalContent);
@@ -194,34 +235,41 @@ const UI = {
 
   // Set up the win modal with Next Level button and grade display
   setupWinModal() {
-    // Clear the existing content
-    const modalContent = this.winModal.querySelector('.modal-content');
-    const header = modalContent.querySelector('h2');
-    const movesText = modalContent.querySelector('p');
-
+    // Get the modal body
+    const modalBody = this.winModal.querySelector('.modal-body');
+    const winStats = modalBody.querySelector('.win-stats');
+    
     // Create grade display element
     this.finalGradeEl = document.createElement('div');
     this.finalGradeEl.id = 'finalGrade';
     this.finalGradeEl.className = 'final-grade';
+    
+    // Create grade text element
+    const gradeText = document.createElement('div');
+    gradeText.className = 'grade-text';
+    this.finalGradeEl.appendChild(gradeText);
+    
+    // Create star rating
+    const starsContainer = document.createElement('div');
+    starsContainer.className = 'grade-stars';
+    this.finalGradeEl.appendChild(starsContainer);
 
     // Create optimal moves element
     this.optimalMovesEl = document.createElement('div');
     this.optimalMovesEl.id = 'optimalMoves';
     this.optimalMovesEl.className = 'optimal-moves';
 
-    // Insert grade display and optimal moves after the moves text
-    if (movesText) {
-      movesText.after(this.finalGradeEl);
-      this.finalGradeEl.after(this.optimalMovesEl);
-    }
+    // Add elements to win stats
+    winStats.appendChild(this.finalGradeEl);
+    winStats.appendChild(this.optimalMovesEl);
 
-    // Create buttons container
-    const buttonsContainer = document.createElement('div');
-    buttonsContainer.className = 'win-buttons';
+    // Get footer for buttons
+    const buttonsContainer = this.winModal.querySelector('.win-buttons');
 
     // Create new Play Again button (same board)
     this.playAgainBtn = document.createElement('button');
     this.playAgainBtn.id = 'playAgainBtn';
+    this.playAgainBtn.className = 'btn btn-primary';
     this.playAgainBtn.textContent = 'שחק שוב אותו לוח';
     this.playAgainBtn.addEventListener('click', () => {
       this.hideWinModal();
@@ -232,6 +280,7 @@ const UI = {
     // Create New Random Board button
     this.newRandomBoardBtn = document.createElement('button');
     this.newRandomBoardBtn.id = 'newRandomBoardBtn';
+    this.newRandomBoardBtn.className = 'btn btn-accent';
     this.newRandomBoardBtn.textContent = 'לוח חדש';
     this.newRandomBoardBtn.addEventListener('click', () => {
       this.hideWinModal();
@@ -241,6 +290,7 @@ const UI = {
     // Create Continue to Next Level button
     this.continueNextLevelBtn = document.createElement('button');
     this.continueNextLevelBtn.id = 'continueNextLevelBtn';
+    this.continueNextLevelBtn.className = 'btn btn-success';
     this.continueNextLevelBtn.textContent = 'המשך לשלב הבא';
     this.continueNextLevelBtn.addEventListener('click', () => {
       const nextLevel = GameState.getNextLevel();
@@ -262,24 +312,40 @@ const UI = {
     buttonsContainer.appendChild(this.playAgainBtn);
     buttonsContainer.appendChild(this.newRandomBoardBtn);
     buttonsContainer.appendChild(this.continueNextLevelBtn);
-
-    // Add container to modal
-    modalContent.appendChild(buttonsContainer);
   },
 
   // Create level navigation UI
   createLevelNavigation() {
-    const controlsDiv = document.querySelector('.controls');
+    const levelNavContainer = document.querySelector('.level-navigation-container');
 
-    // Create difficulty and level display container
-    const levelContainer = document.createElement('div');
-    levelContainer.className = 'level-container';
+    // Create level navigation component
+    const levelNav = document.createElement('div');
+    levelNav.className = 'level-navigation';
+
+    // Create previous level button
+    this.prevLevelBtn = document.createElement('button');
+    this.prevLevelBtn.id = 'prevLevelBtn';
+    this.prevLevelBtn.className = 'nav-btn';
+    this.prevLevelBtn.innerHTML = '&#10094;';
+    this.prevLevelBtn.setAttribute('aria-label', 'השלב הקודם');
+    this.prevLevelBtn.addEventListener('click', () => {
+      if (GameState.currentLevel > 1) {
+        GameState.currentLevel--;
+        GameState.saveSettings();
+        this.updateLevelDisplay();
+        this.Game.startNewGame();
+      }
+    });
+
+    // Create level info container
+    const levelInfo = document.createElement('div');
+    levelInfo.className = 'level-info';
 
     // Create level display
     this.levelDisplay = document.createElement('div');
     this.levelDisplay.id = 'levelDisplay';
     this.levelDisplay.className = 'level-display';
-    this.levelDisplay.innerHTML = `שלב: <span>1</span> / 20`;
+    this.levelDisplay.innerHTML = `שלב <span>1</span> / 20`;
 
     // Create difficulty display
     this.levelDifficulty = document.createElement('div');
@@ -291,25 +357,15 @@ const UI = {
     this.levelDifficulty.textContent = difficultyText;
 
     // Add level display and difficulty to container
-    levelContainer.appendChild(this.levelDisplay);
-    levelContainer.appendChild(this.levelDifficulty);
+    levelInfo.appendChild(this.levelDisplay);
+    levelInfo.appendChild(this.levelDifficulty);
 
-    // Create navigation buttons
-    this.prevLevelBtn = document.createElement('button');
-    this.prevLevelBtn.id = 'prevLevelBtn';
-    this.prevLevelBtn.textContent = 'הקודם';
-    this.prevLevelBtn.addEventListener('click', () => {
-      if (GameState.currentLevel > 1) {
-        GameState.currentLevel--;
-        GameState.saveSettings();
-        this.updateLevelDisplay();
-        this.Game.startNewGame();
-      }
-    });
-
+    // Create next level button
     this.nextLevelBtn = document.createElement('button');
     this.nextLevelBtn.id = 'nextLevelBtn';
-    this.nextLevelBtn.textContent = 'הבא';
+    this.nextLevelBtn.className = 'nav-btn';
+    this.nextLevelBtn.innerHTML = '&#10095;';
+    this.nextLevelBtn.setAttribute('aria-label', 'השלב הבא');
     this.nextLevelBtn.addEventListener('click', () => {
       const nextLevel = GameState.currentLevel + 1;
       // Only allow going to the next level if it's unlocked
@@ -324,21 +380,20 @@ const UI = {
       }
     });
 
-    // Create level navigation container
-    const levelNav = document.createElement('div');
-    levelNav.className = 'level-navigation';
+    // Add components to level navigation
     levelNav.appendChild(this.prevLevelBtn);
-    levelNav.appendChild(levelContainer);
+    levelNav.appendChild(levelInfo);
     levelNav.appendChild(this.nextLevelBtn);
 
-    // Add to controls before existing elements
-    controlsDiv.insertBefore(levelNav, controlsDiv.firstChild);
+    // Add to container
+    levelNavContainer.appendChild(levelNav);
   },
 
   // Create random board button
   createRandomBoardButton() {
     this.randomBoardBtn = document.createElement('button');
     this.randomBoardBtn.id = 'randomBoardBtn';
+    this.randomBoardBtn.className = 'btn btn-accent';
     this.randomBoardBtn.textContent = 'לוח אקראי';
     this.randomBoardBtn.addEventListener('click', () => {
       GameState.currentLevel = 0; // 0 indicates random board
@@ -358,7 +413,7 @@ const UI = {
       this.levelDisplay.innerHTML = `לוח אקראי`;
       this.levelDifficulty.textContent = "";
     } else {
-      this.levelDisplay.innerHTML = `שלב: <span>${GameState.currentLevel}</span> / 20`;
+      this.levelDisplay.innerHTML = `שלב <span>${GameState.currentLevel}</span> / 20`;
 
       // Update the difficulty label
       const difficultyText = GameConfig.DIFFICULTY_LEVELS && GameConfig.DIFFICULTY_LEVELS[GameState.currentLevel]?.name || "";
@@ -489,43 +544,59 @@ const UI = {
     this.instructionsModal.classList.add('hidden');
   },
 
+  // Create star rating component
+  createStarRating(grade, container, animate = false) {
+    // Clear existing content
+    container.innerHTML = '';
+    
+    // Create star container
+    const starContainer = document.createElement('div');
+    starContainer.className = `star-rating ${animate ? 'animate' : ''}`;
+    
+    // Determine how many stars to show based on grade
+    let starCount = 0;
+    switch (grade) {
+      case 'PERFECT': starCount = 5; break;
+      case 'GREAT': starCount = 4; break;
+      case 'GOOD': starCount = 3; break;
+      case 'OK': starCount = 2; break;
+      default: starCount = 1; // FAIL
+    }
+    
+    // Create stars
+    for (let i = 0; i < 5; i++) {
+      const star = document.createElement('div');
+      star.className = `star ${i >= starCount ? 'inactive' : ''}`;
+      star.style.setProperty('--star-index', i);
+      starContainer.appendChild(star);
+    }
+    
+    // Add to container
+    container.appendChild(starContainer);
+    return starContainer;
+  },
+
   // Show win modal with grade information
   showWinModal(moves, gradeInfo, optimalMoves) {
     this.finalMovesEl.textContent = moves;
 
     // Update grade display
     if (this.finalGradeEl && gradeInfo) {
-      // Set grade text
-      this.finalGradeEl.textContent = gradeInfo.displayText;
-
-      // Set grade color based on grade
-      this.finalGradeEl.className = 'final-grade'; // Reset classes
+      // Reset classes
+      this.finalGradeEl.className = 'final-grade';
       this.finalGradeEl.classList.add(`grade-${gradeInfo.grade.toLowerCase()}`);
-
-      // Add stars or other visual indicators based on grade
-      let starsHTML = '';
-      switch (gradeInfo.grade) {
-        case 'PERFECT':
-          starsHTML = '⭐⭐⭐⭐⭐';
-          break;
-        case 'GREAT':
-          starsHTML = '⭐⭐⭐⭐';
-          break;
-        case 'GOOD':
-          starsHTML = '⭐⭐⭐';
-          break;
-        case 'OK':
-          starsHTML = '⭐⭐';
-          break;
-        default:
-          starsHTML = '⭐';
+      
+      // Create grade text element
+      const gradeTextEl = this.finalGradeEl.querySelector('.grade-text');
+      if (gradeTextEl) {
+        gradeTextEl.textContent = gradeInfo.displayText;
       }
-
-      // Add stars to grade display
-      const starsEl = document.createElement('div');
-      starsEl.className = 'grade-stars';
-      starsEl.innerHTML = starsHTML;
-      this.finalGradeEl.appendChild(starsEl);
+      
+      // Create star rating
+      const starsEl = this.finalGradeEl.querySelector('.grade-stars');
+      if (starsEl) {
+        this.createStarRating(gradeInfo.grade, starsEl, true);
+      }
     }
 
     // Update optimal moves display
@@ -571,48 +642,104 @@ const UI = {
   showScoreboard() {
     // Generate scoreboard content
     const scores = GameState.getAllScores();
-    let html = '<table class="scores-table"><thead><tr>' +
-      '<th>שלב</th>' +
-      '<th>רמת קושי</th>' +
-      '<th>שיא אישי</th>' +
-      '<th>ציון</th>' +
-      '<th>אופטימלי</th>' +
-      '</tr></thead><tbody>';
-
-    scores.forEach(item => {
-      // Add grade display with star icons
-      let gradeDisplay = '';
-      if (item.grade) {
-        // Add stars based on grade
-        switch (item.grade) {
-          case 'PERFECT':
-            gradeDisplay = '⭐⭐⭐⭐⭐';
-            break;
-          case 'GREAT':
-            gradeDisplay = '⭐⭐⭐⭐';
-            break;
-          case 'GOOD':
-            gradeDisplay = '⭐⭐⭐';
-            break;
-          case 'OK':
-            gradeDisplay = '⭐⭐';
-            break;
-          default:
-            gradeDisplay = '⭐';
-        }
-      }
-
-      html += `<tr class="${!item.score ? 'not-played' : ''} ${item.grade ? 'grade-' + item.grade.toLowerCase() : ''}">
-                <td>${item.level}</td>
-                <td>${item.difficulty}</td>
-                <td>${item.score || '-'}</td>
-                <td>${gradeDisplay}</td>
-                <td>${item.optimal || '-'}</td>
-              </tr>`;
+    
+    // Create table structure
+    const table = document.createElement('table');
+    table.className = 'scores-table';
+    
+    // Create header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    
+    const headers = [
+      { text: 'שלב', class: 'level-header' },
+      { text: 'רמת קושי', class: 'difficulty-header' },
+      { text: 'שיא אישי', class: 'score-header' },
+      { text: 'ציון', class: 'grade-header' },
+      { text: 'אופטימלי', class: 'optimal-header' }
+    ];
+    
+    headers.forEach(header => {
+      const th = document.createElement('th');
+      th.textContent = header.text;
+      if (header.class) th.className = header.class;
+      headerRow.appendChild(th);
     });
-
-    html += '</tbody></table>';
-    this.scoreboardContent.innerHTML = html;
+    
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    
+    // Create table body
+    const tbody = document.createElement('tbody');
+    
+    scores.forEach(item => {
+      const row = document.createElement('tr');
+      if (!item.score) row.classList.add('not-played');
+      if (item.grade) row.classList.add(`grade-${item.grade.toLowerCase()}`);
+      
+      // Level cell
+      const levelCell = document.createElement('td');
+      levelCell.className = 'level-cell';
+      levelCell.textContent = item.level;
+      row.appendChild(levelCell);
+      
+      // Difficulty cell
+      const difficultyCell = document.createElement('td');
+      difficultyCell.textContent = item.difficulty;
+      row.appendChild(difficultyCell);
+      
+      // Score cell
+      const scoreCell = document.createElement('td');
+      scoreCell.textContent = item.score || '-';
+      row.appendChild(scoreCell);
+      
+      // Grade cell with stars
+      const gradeCell = document.createElement('td');
+      
+      if (item.grade) {
+        // Create star container div
+        const starsContainer = document.createElement('div');
+        starsContainer.className = 'grade-stars-cell';
+        
+        // Determine star count based on grade
+        let starCount = 0;
+        switch (item.grade) {
+          case 'PERFECT': starCount = 5; break;
+          case 'GREAT': starCount = 4; break;
+          case 'GOOD': starCount = 3; break;
+          case 'OK': starCount = 2; break;
+          default: starCount = 1; // FAIL
+        }
+        
+        // Add stars
+        for (let i = 0; i < 5; i++) {
+          const star = document.createElement('div');
+          star.className = `grade-star ${i >= starCount ? 'inactive' : ''}`;
+          starsContainer.appendChild(star);
+        }
+        
+        gradeCell.appendChild(starsContainer);
+      } else {
+        gradeCell.textContent = '-';
+      }
+      
+      row.appendChild(gradeCell);
+      
+      // Optimal moves cell
+      const optimalCell = document.createElement('td');
+      optimalCell.textContent = item.optimal || '-';
+      row.appendChild(optimalCell);
+      
+      tbody.appendChild(row);
+    });
+    
+    table.appendChild(tbody);
+    
+    // Clear and add to scoreboard content
+    this.scoreboardContent.innerHTML = '';
+    this.scoreboardContent.appendChild(table);
+    
+    // Show modal
     this.scoreboardModal.classList.remove('hidden');
 
     // If sound manager is available, play button sound
@@ -620,7 +747,7 @@ const UI = {
       window.SoundManager.playButtonSound();
     }
   },
-
+  
   // Hide scoreboard modal
   hideScoreboard() {
     this.scoreboardModal.classList.add('hidden');

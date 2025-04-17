@@ -7,80 +7,118 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div class="container">
-      <header>
-        <h1>כרומשיפט</h1>
-        <div class="game-stats">
-          <div id="moveCounter">מהלכים: <span>0</span></div>
-          <div id="bestScore">שיא אישי: <span>-</span></div>
+    <div class="app-container">
+      <header class="game-header">
+        <div class="header-content">
+          <h1 class="game-title">כרומשיפט</h1>
+          <div class="game-stats">
+            <div id="moveCounter" class="stat-card">
+              <span class="stat-label">מהלכים</span>
+              <span class="stat-value">0</span>
+            </div>
+            <div id="bestScore" class="stat-card">
+              <span class="stat-label">שיא אישי</span>
+              <span class="stat-value">-</span>
+            </div>
+          </div>
         </div>
       </header>
 
-      <main>
-        <div id="gameBoard"></div>
-        <div id="colorPicker"></div>
+      <main class="game-main">
+        <div class="level-navigation-container">
+          <!-- Level navigation will be injected by ui.js -->
+        </div>
+        
+        <div class="game-board-container">
+          <div id="gameBoard" class="game-board"></div>
+        </div>
+        
+        <div id="colorPicker" class="color-picker"></div>
 
-        <div class="controls">
-          <button id="newGameBtn">משחק חדש</button>
-          <button id="scoreboardBtn">טבלת שיאים</button>
-          <button id="helpBtn">הוראות</button>
+        <div class="controls-container">
+          <div class="controls">
+            <button id="newGameBtn" class="btn btn-primary">משחק חדש</button>
+            <button id="scoreboardBtn" class="btn btn-secondary">טבלת שיאים</button>
+            <button id="helpBtn" class="btn btn-secondary">הוראות</button>
+          </div>
         </div>
       </main>
 
       <div id="instructions" class="modal hidden">
+        <div class="modal-backdrop"></div>
         <div class="modal-content">
-          <h2>הוראות המשחק</h2>
-          <p>ברוכים הבאים לכרומשיפט - משחק פאזל אסטרטגי מבוסס צבעים!</p>
-          <ul>
-            <li>המטרה: לכבוש את כל הלוח בכמה שפחות מהלכים.</li>
-            <li>אתם מתחילים מהפינה השמאלית העליונה.</li>
-            <li>בכל תור בחרו צבע - כל האריחים שבבעלותכם יהפכו לצבע זה.</li>
-            <li>כל אריח סמוך באותו צבע יצטרף אוטומטית לשטח שלכם.</li>
-            <li>
-              ניתן לבחור צבע על ידי לחיצה על כל אריח הסמוך לשטח שבבעלותכם.
-            </li>
-            <li>המשיכו עד שכל הלוח בשליטתכם.</li>
-          </ul>
-          <button id="closeInstructions">הבנתי</button>
+          <div class="modal-header">
+            <h2>הוראות המשחק</h2>
+            <button class="modal-close" id="closeInstructionsX" aria-label="סגור">✕</button>
+          </div>
+          <div class="modal-body">
+            <p>ברוכים הבאים לכרומשיפט - משחק פאזל אסטרטגי מבוסס צבעים!</p>
+            <ul class="instruction-list">
+              <li>המטרה: לכבוש את כל הלוח בכמה שפחות מהלכים.</li>
+              <li>אתם מתחילים מהפינה השמאלית העליונה.</li>
+              <li>בכל תור בחרו צבע - כל האריחים שבבעלותכם יהפכו לצבע זה.</li>
+              <li>כל אריח סמוך באותו צבע יצטרף אוטומטית לשטח שלכם.</li>
+              <li>ניתן לבחור צבע על ידי לחיצה על כל אריח הסמוך לשטח שבבעלותכם.</li>
+              <li>המשיכו עד שכל הלוח בשליטתכם.</li>
+            </ul>
+          </div>
+          <div class="modal-footer">
+            <button id="closeInstructions" class="btn btn-primary">הבנתי</button>
+          </div>
         </div>
       </div>
 
       <div id="winModal" class="modal hidden">
+        <div class="modal-backdrop"></div>
         <div class="modal-content">
-          <h2>ניצחון! 🎉</h2>
-          <p>סיימת את המשחק ב-<span id="finalMoves"></span> מהלכים!</p>
-          <div class="win-buttons">
-            <!-- Buttons will be dynamically created in game.js -->
+          <div class="modal-header">
+            <h2>ניצחון! 🎉</h2>
+            <button class="modal-close" id="closeWinModalX" aria-label="סגור">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="win-stats">
+              <p class="moves-info">סיימת את המשחק ב-<span id="finalMoves" class="highlighted-stat"></span> מהלכים!</p>
+              <!-- Grade and optimal moves will be injected by ui.js -->
+            </div>
+          </div>
+          <div class="modal-footer win-buttons">
+            <!-- Buttons will be dynamically created in ui.js -->
           </div>
         </div>
       </div>
 
       <div id="scoreboardModal" class="modal hidden">
+        <div class="modal-backdrop"></div>
         <div class="modal-content">
-          <h2>טבלת שיאים</h2>
-          <div class="share-buttons">
-            <h3>שתף את ההישגים שלך</h3>
-            <div class="social-buttons">
-              <button id="shareWhatsApp" class="share-btn whatsapp">WhatsApp</button>
-              <button id="shareInstagram" class="share-btn instagram">Instagram</button>
-              <button id="shareFacebook" class="share-btn facebook">Facebook</button>
+          <div class="modal-header">
+            <h2>טבלת שיאים</h2>
+            <button class="modal-close" id="closeScoreboardX" aria-label="סגור">✕</button>
+          </div>
+          <div class="modal-body">
+            <div id="scoreboardContent" class="scoreboard-container"></div>
+            <div class="share-section">
+              <h3>שתף את ההישגים שלך</h3>
+              <div class="social-buttons">
+                <button id="shareWhatsApp" class="share-btn whatsapp">WhatsApp</button>
+                <button id="shareInstagram" class="share-btn instagram">Instagram</button>
+                <button id="shareFacebook" class="share-btn facebook">Facebook</button>
+              </div>
             </div>
           </div>
-          <div id="scoreboardContent"></div>
-          <button id="closeScoreboard">סגור</button>
+          <div class="modal-footer">
+            <button id="closeScoreboard" class="btn btn-primary">סגור</button>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Module imports in the correct dependency order -->
-    
-
     <script type="module" src="boards.js"></script>    
     <script type="module" src="config.js"></script>
     <script type="module" src="state.js"></script>
