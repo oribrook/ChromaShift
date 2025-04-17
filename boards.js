@@ -1,109 +1,148 @@
 /**
  * ChromaShift Game - Difficulty-Based Board Generator
  * This system creates boards with gradual difficulty progression
+ * and tracks optimal solutions for grading player performance
  */
 
-// Color constants
-const COLOR_RED = '#e74c3c';
-const COLOR_BLUE = '#3498db';
-const COLOR_YELLOW = '#f1c40f';
-const COLOR_GREEN = '#2ecc71';
-const COLOR_PURPLE = '#9b59b6';
-const COLORS = [COLOR_RED, COLOR_BLUE, COLOR_YELLOW, COLOR_GREEN, COLOR_PURPLE];
-
-// Difficulty parameters
-const DIFFICULTY_LEVELS = {
-  1: { name: "קל מאוד", adjacencyFactor: 0.85, colorCount: 3 },     // Very Easy
-  2: { name: "קל", adjacencyFactor: 0.80, colorCount: 3 },          // Easy
-  3: { name: "קל", adjacencyFactor: 0.75, colorCount: 4 },          // Easy
-  4: { name: "קל-בינוני", adjacencyFactor: 0.70, colorCount: 4 },   // Easy-Medium
-  5: { name: "קל-בינוני", adjacencyFactor: 0.65, colorCount: 5 },   // Easy-Medium
-  6: { name: "בינוני", adjacencyFactor: 0.60, colorCount: 5 },      // Medium
-  7: { name: "בינוני", adjacencyFactor: 0.55, colorCount: 5 },      // Medium
-  8: { name: "בינוני", adjacencyFactor: 0.50, colorCount: 5 },      // Medium
-  9: { name: "בינוני-קשה", adjacencyFactor: 0.45, colorCount: 5 },  // Medium-Hard
-  10: { name: "בינוני-קשה", adjacencyFactor: 0.40, colorCount: 5 }, // Medium-Hard
-  11: { name: "קשה", adjacencyFactor: 0.35, colorCount: 5 },        // Hard
-  12: { name: "קשה", adjacencyFactor: 0.30, colorCount: 5 },        // Hard
-  13: { name: "קשה", adjacencyFactor: 0.25, colorCount: 5 },        // Hard
-  14: { name: "קשה מאוד", adjacencyFactor: 0.20, colorCount: 5 },   // Very Hard
-  15: { name: "קשה מאוד", adjacencyFactor: 0.15, colorCount: 5 },   // Very Hard
-  16: { name: "קשה מאוד", adjacencyFactor: 0.10, colorCount: 5 },   // Very Hard
-  17: { name: "מומחה", adjacencyFactor: 0.05, colorCount: 5 },      // Expert
-  18: { name: "מומחה", adjacencyFactor: 0.03, colorCount: 5 },      // Expert
-  19: { name: "מומחה", adjacencyFactor: 0.02, colorCount: 5 },      // Expert
-  20: { name: "אלוף", adjacencyFactor: 0.01, colorCount: 5 }        // Master
-};
+// Import constants from the constants file
+import { 
+  COLORS, 
+  DIFFICULTY_LEVELS, 
+  GRADE_THRESHOLDS, 
+  GRADE_DISPLAY 
+} from './constants.js';
 
 /**
- * Generates a board with controlled difficulty
+ * Generates a board with controlled difficulty and known optimal solution
  * @param {number} size - Board size (width/height)
  * @param {number} difficulty - Difficulty level (1-20)
  * @param {number} seed - Random seed (optional)
- * @returns {Array} Generated board
+ * @returns {Object} Generated board with solution data
  */
 function generateBoard(size = 6, difficulty = 1, seed = null) {
-  // difficulty = 20; // TEST
+  return generateBoardWithSolution(size, difficulty, seed);
+}
+
+/**
+ * Generates a board using a solution-first approach
+ * Creates a puzzle by working backwards from a solved state
+ * @param {number} size - Board size (width/height)
+ * @param {number} difficulty - Difficulty level (1-20)
+ * @param {number} seed - Random seed (optional)
+ * @returns {Object} Board data with solution information
+ */
+function generateBoardWithSolution(size = 6, difficulty = 1, seed = null) {
   // Get difficulty parameters
-  const { adjacencyFactor, colorCount } = DIFFICULTY_LEVELS[difficulty] || DIFFICULTY_LEVELS[1];
+  const { adjacencyFactor, colorCount, targetMoves } = 
+    DIFFICULTY_LEVELS[difficulty] || DIFFICULTY_LEVELS[1];
   
   // Select colors for this board
   const boardColors = COLORS.slice(0, colorCount);
   
-  // Create empty board
-  const board = Array(size).fill().map(() => Array(size));
+  // Create a fully solved board (all same color)
+  let initialColor = boardColors[Math.floor(Math.random() * boardColors.length)];
+  let board = Array(size).fill().map(() => Array(size).fill(initialColor));
   
-  // Fill board with weighted random colors
+  // Track ownership (Start with all owned)
+  let owned = Array(size).fill().map(() => Array(size).fill(true));
+  
+  // Starting position (top-right for RTL)
+  const startX = size - 1;
+  const startY = 0;
+  
+  // Store optimal solution steps
+  const solutionSteps = [];
+  
+  // Perform "unmoves" to create the puzzle
+  const movesNeeded = targetMoves;
+  
+  for (let moveNum = 0; moveNum < movesNeeded; moveNum++) {
+    // Choose a color different from the current one
+    let availableColors = boardColors.filter(c => c !== initialColor);
+    let newColor = availableColors[Math.floor(Math.random() * availableColors.length)];
+    
+    // Store this step in the solution (in reverse order)
+    solutionSteps.unshift(newColor);
+    
+    // Find tiles to "unown" - We create a disconnected region with this color
+    let tilesToUnown = findTilesToUncolorForDifficulty(board, owned, newColor, 
+      startX, startY, size, adjacencyFactor);
+    
+    // If we couldn't find enough tiles to uncolor, try another color
+    if (tilesToUnown.length < 2) {
+      moveNum--; // Try again with a different color
+      continue;
+    }
+    
+    // Apply the "unmove"
+    for (const [x, y] of tilesToUnown) {
+      // Change color and mark as unowned
+      board[y][x] = newColor;
+      owned[y][x] = false;
+    }
+    
+    // The new color becomes the initialColor for the next iteration
+    initialColor = newColor;
+  }
+  
+  // Analyze the generated board
+  const analysis = analyzeBoard(board);
+  
+  // Make sure starter tile is owned but all others aren't
+  owned = Array(size).fill().map(() => Array(size).fill(false));
+  owned[startY][startX] = true;
+  
+  // Create a flattened 2D array version of the board to return
+  const result = {
+    board,
+    optimalSolution: solutionSteps,
+    optimalMoves: solutionSteps.length,
+    analysis
+  };
+  
+  return result;
+}
+
+/**
+ * Finds tiles to uncolor for a given move when generating the puzzle
+ * @param {Array} board - Current board state
+ * @param {Array} owned - Current ownership state
+ * @param {string} newColor - Color to apply
+ * @param {number} startX - Starting X position
+ * @param {number} startY - Starting Y position
+ * @param {number} size - Board size
+ * @param {number} adjacencyFactor - Controls how connected the regions should be
+ * @returns {Array} Array of [x,y] coordinates to uncolor
+ */
+function findTilesToUncolorForDifficulty(board, owned, newColor, startX, startY, size, adjacencyFactor) {
+  // Find all owned tiles except the start position
+  const candidates = [];
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
-      if (y === 0 && x === 0) {
-        // Start position - random color
-        board[y][x] = boardColors[Math.floor(Math.random() * boardColors.length)];
-        continue;
-      }
-      
-      // Get adjacent filled cells
-      const adjacentColors = {};
-      if (x > 0 && board[y][x-1]) {
-        adjacentColors[board[y][x-1]] = (adjacentColors[board[y][x-1]] || 0) + 1;
-      }
-      if (y > 0 && board[y-1][x]) {
-        adjacentColors[board[y-1][x]] = (adjacentColors[board[y-1][x]] || 0) + 1;
-      }
-      
-      // Weighted color selection based on adjacency
-      if (Object.keys(adjacentColors).length > 0 && Math.random() < adjacencyFactor) {
-        // Choose from adjacent colors with weight
-        let totalWeight = 0;
-        for (const color in adjacentColors) {
-          totalWeight += adjacentColors[color];
-        }
-        
-        let randomWeight = Math.random() * totalWeight;
-        for (const color in adjacentColors) {
-          randomWeight -= adjacentColors[color];
-          if (randomWeight <= 0) {
-            board[y][x] = color;
-            break;
-          }
-        }
-      } else {
-        // Choose random color
-        board[y][x] = boardColors[Math.floor(Math.random() * boardColors.length)];
+      if (owned[y][x] && !(x === startX && y === startY)) {
+        candidates.push([x, y]);
       }
     }
   }
   
-  // Validate board isn't too easy/hard for the target difficulty
-  const analysis = analyzeBoard(board);
-  const expectedRegions = difficultyToExpectedRegions(difficulty);
-  
-  // If the generated board is too far from expected difficulty, retry
-  if (Math.abs(analysis.regions - expectedRegions) > 5) {
-    return generateBoard(size, difficulty, seed);
+  // Shuffle candidates
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
   }
   
-  return board;
+  // Select a subset of candidates to uncolor based on adjacency factor
+  const tilesToUncolor = [];
+  const targetCount = Math.ceil(candidates.length * (1 - adjacencyFactor));
+  
+  let currentCount = 0;
+  while (currentCount < targetCount && candidates.length > 0) {
+    const [x, y] = candidates.shift();
+    tilesToUncolor.push([x, y]);
+    currentCount++;
+  }
+  
+  return tilesToUncolor;
 }
 
 /**
@@ -170,6 +209,33 @@ function analyzeBoard(board) {
   };
 }
 
+/**
+ * Calculate player grade based on move count compared to optimal solution
+ * @param {number} moveCount - Player's move count
+ * @param {number} optimalMoves - Optimal number of moves
+ * @returns {Object} Grade information
+ */
+function calculateGrade(moveCount, optimalMoves) {
+  const difference = moveCount - optimalMoves;
+  
+  let gradeKey = 'FAIL';
+  if (difference <= GRADE_THRESHOLDS.PERFECT) {
+    gradeKey = 'PERFECT';
+  } else if (difference <= GRADE_THRESHOLDS.GREAT) {
+    gradeKey = 'GREAT';
+  } else if (difference <= GRADE_THRESHOLDS.GOOD) {
+    gradeKey = 'GOOD';
+  } else if (difference <= GRADE_THRESHOLDS.OK) {
+    gradeKey = 'OK';
+  }
+  
+  return {
+    grade: gradeKey,
+    displayText: GRADE_DISPLAY[gradeKey],
+    difference: difference
+  };
+}
+
 // Generate a complete set of boards for all difficulty levels
 function generateGameBoards() {
   const boards = [];
@@ -181,8 +247,9 @@ function generateGameBoards() {
   return boards;
 }
 
-// Example usage
-// const generatedBoards = generateGameBoards();
-// console.log(generatedBoards);
-
-export { generateBoard, analyzeBoard, DIFFICULTY_LEVELS, COLORS };
+export { 
+  generateBoard, 
+  generateBoardWithSolution, 
+  analyzeBoard, 
+  calculateGrade
+};

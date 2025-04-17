@@ -30,11 +30,92 @@ const Game = {
   },
 
   // Start a new game
-  startNewGame(randomBoard = false) {
-    GameState.reset();
-    this.createBoard(randomBoard);
+  startNewGame(options = {}) {
+    // Default options
+    const defaultOptions = {
+      randomBoard: false, 
+      reuseSeed: false,
+      keepLevel: true,
+      useSavedBoard: false // New option to use saved board data
+    };
+    
+    // Merge provided options with defaults
+    const { randomBoard, reuseSeed, keepLevel, useSavedBoard } = { ...defaultOptions, ...options };
+    
+    // Reset game state, optionally keeping the current seed
+    GameState.reset(reuseSeed);
+    
+    // Create the board
+    if (useSavedBoard && GameState.savedBoardData) {
+      // Use the exact saved board data rather than generating a new one
+      this.createBoardFromSaved();
+    } else {
+      // Generate a new board
+      this.createBoard(randomBoard);
+    }
+    
     UI.updateMoveCounter();
     UI.updateBestScore();
+    
+    // Display the optimal moves indicator
+    UI.updateOptimalMovesDisplay();
+  },
+
+  // Replay the exact same board
+  replayCurrentBoard() {
+    // Use the saved board data and same seed
+    this.startNewGame({ reuseSeed: true, useSavedBoard: true });
+  },
+
+  // Create a board from saved data
+  createBoardFromSaved() {
+    if (!GameState.savedBoardData) {
+      console.error("No saved board data found, generating new board instead");
+      this.createBoard(false);
+      return;
+    }
+    
+    const { boardSize } = GameState;
+    const tileSize = GameConfig.tileSize;
+    
+    UI.boardEl.innerHTML = '';
+    UI.boardEl.style.gridTemplateColumns = `repeat(${boardSize}, ${tileSize}px)`;
+    
+    // Restore the board, owned tiles, and solution data from saved state
+    GameState.board = JSON.parse(JSON.stringify(GameState.savedBoardData.board));
+    GameState.setOptimalSolution(
+      GameState.savedBoardData.optimalSolution,
+      GameState.savedBoardData.optimalMoves
+    );
+    
+    // Create the UI elements for the board
+    for (let y = 0; y < boardSize; y++) {
+      for (let x = 0; x < boardSize; x++) {
+        const color = GameState.board[y][x];
+        
+        // Create a tile element
+        UI.createTileElement(x, y, color, tileSize);
+      }
+    }
+    
+    // Reset ownership - only the top-right tile is owned by default
+    GameState.owned = Array(boardSize).fill().map(() => Array(boardSize).fill(false));
+    const startX = boardSize - 1; // Right side for RTL
+    const startY = 0; // Top
+    GameState.owned[startY][startX] = true;
+    GameState.activeTiles = 1;
+    
+    // Store initial color to fix the same-color bug
+    GameState.initialColor = GameState.board[startY][startX];
+    UI.updateBoard();
+    
+    // Show optimal moves in debug mode (can be removed in production)
+    if (window.location.hash === '#debug') {
+      console.log('Replaying saved board');
+      console.log('Optimal solution:', GameState.savedBoardData.optimalSolution);
+      console.log('Optimal moves:', GameState.savedBoardData.optimalMoves);
+      console.log('Current seed:', GameState.currentSeed);
+    }
   },
 
   // Create the game board
@@ -52,8 +133,22 @@ const Game = {
       difficultyLevel = Math.floor(Math.random() * 20) + 1;
     }
 
-    // Generate the board using our dynamic board generator
-    const generatedBoard = generateBoard(boardSize, difficultyLevel, GameState.currentSeed);
+    // Generate the board using our solution-tracking board generator
+    const generatedBoardData = generateBoard(boardSize, difficultyLevel, GameState.currentSeed);
+    const generatedBoard = generatedBoardData.board;
+    
+    // Store optimal solution data in GameState
+    GameState.setOptimalSolution(
+      generatedBoardData.optimalSolution,
+      generatedBoardData.optimalMoves
+    );
+    
+    // Save the entire board data for potential replay
+    GameState.savedBoardData = {
+      board: JSON.parse(JSON.stringify(generatedBoard)),
+      optimalSolution: [...generatedBoardData.optimalSolution],
+      optimalMoves: generatedBoardData.optimalMoves
+    };
 
     // Add the generated board to the game state
     for (let y = 0; y < boardSize; y++) {
@@ -67,13 +162,22 @@ const Game = {
       }
     }
 
-    // The top-left tile is owned by default (RTL in Hebrew version means right-top)
-    GameState.owned[0][boardSize - 1] = true;
+    // The top-right tile is owned by default (RTL in Hebrew version)
+    const startX = boardSize - 1; // Right side for RTL
+    const startY = 0; // Top
+    GameState.owned[startY][startX] = true;
     GameState.activeTiles = 1;
 
     // Store initial color to fix the same-color bug
-    GameState.initialColor = GameState.board[0][boardSize - 1];
+    GameState.initialColor = GameState.board[startY][startX];
     UI.updateBoard();
+    
+    // Show optimal moves in debug mode (can be removed in production)
+    if (window.location.hash === '#debug') {
+      console.log('Optimal solution:', generatedBoardData.optimalSolution);
+      console.log('Optimal moves:', generatedBoardData.optimalMoves);
+      console.log('Current seed:', GameState.currentSeed);
+    }
   },
 
   // Handle tile click (for surrounding tiles)
@@ -129,8 +233,25 @@ const Game = {
     this.floodFill(newColor);
     UI.updateBoard();
 
+    // Check if the player has exceeded the move limit (4 more than optimal)
+    const moveLimit = GameState.optimalMoves + 4;
+    if (GameState.moveCount > moveLimit) {
+      // Player has exceeded the move limit, stop the game
+      this.handleExceededMoveLimit();
+      return;
+    }
+
     // Check if the player has won
     this.checkWin();
+  },
+  
+  // Handle when player exceeds move limit
+  handleExceededMoveLimit() {
+    GameState.gameActive = false;
+    // Show the exceeded move limit modal
+    setTimeout(() => {
+      UI.showExceededMoveLimitModal(GameState.moveCount, GameState.optimalMoves);
+    }, 300);
   },
 
   // Special first-move flood fill that captures all connected tiles of the same color
@@ -199,7 +320,7 @@ const Game = {
     return false; // No new tiles would be acquired
   },
 
-  // Flood fill algorithm
+  // Flood fill algorithm - FIXED to prevent infinite loops
   floodFill(newColor) {
     const { board, owned, boardSize } = GameState;
     const previousActiveTiles = GameState.activeTiles;
@@ -215,38 +336,62 @@ const Game = {
 
     // Keep expanding until no more tiles can be claimed
     let changed = true;
-    while (changed) {
+    let iterations = 0;
+    const MAX_ITERATIONS = boardSize * boardSize; // Safety limit
+    
+    while (changed && iterations < MAX_ITERATIONS) {
       changed = false;
+      iterations++;
+      
+      // Track tiles to claim in this iteration to avoid modifying while iterating
+      const tilesToClaim = [];
+      
       for (let y = 0; y < boardSize; y++) {
         for (let x = 0; x < boardSize; x++) {
           if (!owned[y][x]) {
             // Check if any neighboring tile is owned and has the same color
             const neighbors = this.getNeighbors(x, y);
+            let shouldClaim = false;
+            
             for (const [nx, ny] of neighbors) {
               if (owned[ny][nx] && board[y][x] === newColor) {
-                owned[y][x] = true;
-                GameState.activeTiles++;
-
-                // Find the tile element and add the animation class
-                const tileEl = document.querySelector(`.tile[data-x="${x}"][data-y="${y}"]`);
-                if (tileEl) {
-                  tileEl.classList.add('newly-owned');
-                  // Remove the class after animation completes to allow retriggering
-                  setTimeout(() => {
-                    tileEl.classList.remove('newly-owned');
-                  }, 500);
-                }
-
-                changed = true;
+                shouldClaim = true;
                 break;
               }
+            }
+            
+            if (shouldClaim) {
+              tilesToClaim.push([x, y]);
             }
           }
         }
       }
+      
+      // Apply changes after iteration
+      if (tilesToClaim.length > 0) {
+        changed = true;
+        for (const [x, y] of tilesToClaim) {
+          owned[y][x] = true;
+          GameState.activeTiles++;
+          
+          // Find the tile element and add the animation class
+          const tileEl = document.querySelector(`.tile[data-x="${x}"][data-y="${y}"]`);
+          if (tileEl) {
+            tileEl.classList.add('newly-owned');
+            // Remove the class after animation completes to allow retriggering
+            setTimeout(() => {
+              tileEl.classList.remove('newly-owned');
+            }, 500);
+          }
+        }
+      }
+    }
+    
+    if (iterations >= MAX_ITERATIONS) {
+      console.warn("Flood fill reached maximum iterations - possible infinite loop avoided");
     }
 
-    // If no new tiles were claimed, no need to update the board
+    // Return whether any new tiles were acquired
     return GameState.activeTiles > previousActiveTiles;
   },
 
@@ -270,23 +415,28 @@ const Game = {
     if (allOwned) {
       GameState.gameActive = false;
 
+      // Get the player's grade
+      const gradeInfo = GameState.getGrade();
+      
       // Only save best score for predefined levels, not random boards
       let isNewRecord = false;
       if (GameState.currentLevel > 0) {
         isNewRecord = GameState.updateBestScore(GameState.currentLevel, GameState.moveCount);
         
-        // Mark the level as completed
-        GameState.markLevelCompleted(GameState.currentLevel);
-        
-        // Update button states for level navigation
-        UI.updateNavigationButtons();
+        // Mark the level as completed if within the move limit
+        const exceededMoveLimit = GameState.moveCount > (GameState.optimalMoves + 4);
+        if (!exceededMoveLimit) {
+          GameState.markLevelCompleted(GameState.currentLevel);
+          // Update button states for level navigation
+          UI.updateNavigationButtons();
+        }
         
         UI.updateBestScore();
       }
 
       // Short delay before showing win modal for better UX
       setTimeout(() => {
-        UI.showWinModal(GameState.moveCount);
+        UI.showWinModal(GameState.moveCount, gradeInfo, GameState.optimalMoves);
       }, 300);
     }
   }

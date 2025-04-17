@@ -13,6 +13,12 @@
   --disabled-button: #bdc3c7;
   --continue-button-color: #27ae60;
   --continue-button-hover: #2ecc71;
+  --optimal-color: #3498db;
+  --exceeded-bg: #f8d7da;
+  --exceeded-border: #f5c6cb;
+  --exceeded-text: #721c24;
+  --retry-button-color: #e74c3c;
+  --retry-button-hover: #c0392b;
 }
 
 * {
@@ -53,10 +59,20 @@ h1 {
 
 .game-stats {
   display: flex;
-  justify-content: center;
-  gap: 30px;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
   font-size: 1.1rem;
   margin-bottom: 15px;
+}
+
+.game-stat {
+  font-weight: bold;
+}
+
+/* Optimal moves display during gameplay */
+#optimalMovesDisplay {
+  color: var(--optimal-color);
 }
 
 main {
@@ -269,6 +285,103 @@ button.disabled:hover {
   background-color: var(--continue-button-hover);
 }
 
+/* Final grade and optimal moves display */
+.final-grade {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin: 10px 0;
+  padding: 8px;
+  border-radius: 8px;
+  background-color: #f0f0f0;
+}
+
+.grade-stars {
+  margin-top: 5px;
+  font-size: 1.2rem;
+}
+
+.grade-perfect {
+  color: #FFD700; /* Gold */
+}
+
+.grade-great {
+  color: #4CAF50; /* Green */
+}
+
+.grade-good {
+  color: #2196F3; /* Blue */
+}
+
+.grade-ok {
+  color: #FF9800; /* Orange */
+}
+
+.grade-fail {
+  color: #F44336; /* Red */
+}
+
+.optimal-moves {
+  margin: 10px 0;
+  padding: 8px;
+  background-color: #e8f4fc;
+  border-radius: 8px;
+  font-size: 1rem;
+  color: var(--optimal-color);
+}
+
+/* Exceeded move limit styles */
+.exceeded-message {
+  background-color: var(--exceeded-bg);
+  color: var(--exceeded-text);
+  padding: 10px;
+  border-radius: 6px;
+  margin: 10px 0;
+  font-weight: bold;
+  border: 1px solid var(--exceeded-border);
+}
+
+/* Exceeded move limit modal */
+#exceededMoveLimitModal .modal-content {
+  background-color: var(--exceeded-bg);
+  border: 2px solid var(--exceeded-border);
+}
+
+#exceededMoveLimitModal h2 {
+  color: var(--exceeded-text);
+}
+
+#exceededMoveLimitMessage {
+  font-weight: bold;
+  margin-bottom: 15px;
+}
+
+#exceededOptimalMoves {
+  font-style: italic;
+  margin-bottom: 20px;
+  background-color: rgba(255, 255, 255, 0.5);
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.exceeded-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.exceeded-buttons button {
+  padding: 10px 15px;
+}
+
+#retryExceededBtn {
+  background-color: var(--primary-color);
+}
+
+#newBoardExceededBtn {
+  background-color: var(--accent-color);
+}
+
 /* Animation for when tiles are claimed */
 @keyframes pulse {
   0% { transform: scale(1); }
@@ -311,79 +424,6 @@ button.disabled:hover {
 
 .sound-toggle:hover {
   background-color: rgba(108, 92, 231, 0.1);
-}
-
-/* Mobile Responsive Styles */
-@media (max-width: 600px) {
-  h1 {
-    font-size: 2rem;
-    margin-bottom: 10px;
-  }
-  
-  .game-stats {
-    font-size: 0.9rem;
-    gap: 15px;
-  }
-  
-  .tile {
-    width: 45px;
-    height: 45px;
-    border-radius: 6px;
-  }
-  
-  .color-btn {
-    width: 40px;
-    height: 40px;
-  }
-  
-  button, select {
-    padding: 8px 15px;
-    font-size: 0.9rem;
-  }
-  
-  .modal-content {
-    padding: 20px;
-  }
-  
-  .level-navigation {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-  
-  .level-display {
-    font-size: 1rem;
-    padding: 4px 10px;
-  }
-  
-  .level-difficulty {
-    font-size: 0.85rem;
-    padding: 2px 8px;
-  }
-}
-
-@media (max-width: 400px) {
-  .container {
-    padding: 10px;
-  }
-  
-  h1 {
-    font-size: 1.8rem;
-  }
-  
-  .tile {
-    width: 35px;
-    height: 35px;
-    border-radius: 4px;
-  }
-  
-  .controls {
-    gap: 10px;
-  }
-  
-  .color-btn {
-    width: 35px;
-    height: 35px;
-  }
 }
 
 /* Scoreboard styles */
@@ -460,8 +500,53 @@ button.disabled:hover {
   opacity: 0.9;
 }
 
-/* Add to existing responsive styles */
+/* Mobile Responsive Styles */
 @media (max-width: 600px) {
+  h1 {
+    font-size: 2rem;
+    margin-bottom: 10px;
+  }
+  
+  .game-stats {
+    font-size: 0.9rem;
+    gap: 6px;
+  }
+  
+  .tile {
+    width: 45px;
+    height: 45px;
+    border-radius: 6px;
+  }
+  
+  .color-btn {
+    width: 40px;
+    height: 40px;
+  }
+  
+  button, select {
+    padding: 8px 15px;
+    font-size: 0.9rem;
+  }
+  
+  .modal-content {
+    padding: 20px;
+  }
+  
+  .level-navigation {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .level-display {
+    font-size: 1rem;
+    padding: 4px 10px;
+  }
+  
+  .level-difficulty {
+    font-size: 0.85rem;
+    padding: 2px 8px;
+  }
+  
   .social-buttons {
     flex-direction: column;
     gap: 10px;
@@ -475,5 +560,46 @@ button.disabled:hover {
   .scores-table td {
     padding: 6px 4px;
     font-size: 0.9rem;
+  }
+  
+  .final-grade {
+    font-size: 1.2rem;
+  }
+  
+  .grade-stars {
+    font-size: 1rem;
+  }
+  
+  .optimal-moves {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .container {
+    padding: 10px;
+  }
+  
+  h1 {
+    font-size: 1.8rem;
+  }
+  
+  .tile {
+    width: 35px;
+    height: 35px;
+    border-radius: 4px;
+  }
+  
+  .controls {
+    gap: 10px;
+  }
+  
+  .color-btn {
+    width: 35px;
+    height: 35px;
+  }
+  
+  .modal-content {
+    padding: 15px;
   }
 }

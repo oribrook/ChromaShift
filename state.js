@@ -1,9 +1,12 @@
 /**
  * ChromaShift Game - State Management
- * Handles game state, scoring, and persistence
+ * Handles game state, scoring, grading, and persistence
  */
 
 import { GameConfig, DIFFICULTY_LEVELS } from './config.js';
+import { calculateGrade } from './boards.js';
+// Import GRADE_THRESHOLDS from constants instead of boards
+import { GRADE_THRESHOLDS } from './constants.js';
 
 // Game state
 const GameState = {
@@ -12,12 +15,17 @@ const GameState = {
   moveCount: 0,        // Current move counter
   boardSize: GameConfig.boardSize,
   bestScores: {},      // Best scores for each board level
+  bestGrades: {},      // Best grades for each board level
   completedLevels: {}, // Track which levels have been completed
   activeTiles: 0,      // Count of owned tiles (for animation purposes)
   gameActive: false,   // Whether a game is in progress
   initialColor: '',    // Store the initial color to handle the same-color bug
   currentLevel: 1,     // Current level (1-20)
   currentSeed: null,   // Current random seed for board generation
+  lastSeed: null,      // Store the last seed for replay functionality
+  optimalSolution: [], // Optimal solution steps for current board
+  optimalMoves: 0,     // Optimal number of moves for current board
+  savedBoardData: null, // Store complete board data for replay
 
   // Load saved settings and scores
   init() {
@@ -25,6 +33,12 @@ const GameState = {
     const savedScores = localStorage.getItem(GameConfig.storage.bestScores);
     if (savedScores) {
       this.bestScores = JSON.parse(savedScores);
+    }
+
+    // Load best grades from local storage
+    const savedGrades = localStorage.getItem(GameConfig.storage.bestGrades);
+    if (savedGrades) {
+      this.bestGrades = JSON.parse(savedGrades);
     }
 
     // Load completed levels from local storage
@@ -40,6 +54,12 @@ const GameState = {
       if (settings.currentLevel) {
         this.currentLevel = settings.currentLevel;
       }
+    }
+    
+    // Initialize seed if not set
+    if (this.currentSeed === null) {
+      this.currentSeed = Math.floor(Math.random() * 10000);
+      this.lastSeed = this.currentSeed;
     }
   },
 
@@ -82,16 +102,43 @@ const GameState = {
     return this.currentLevel + 1;
   },
 
-  // Update and save best score
+  // Set optimal solution data
+  setOptimalSolution(solution, optimalMoves) {
+    this.optimalSolution = solution || [];
+    this.optimalMoves = optimalMoves || solution.length;
+  },
+
+  // Get player grade for current performance
+  getGrade() {
+    if (this.moveCount === 0 || this.optimalMoves === 0) return null;
+    return calculateGrade(this.moveCount, this.optimalMoves);
+  },
+
+  // Check if player has exceeded move limit
+  hasExceededMoveLimit() {
+    if (this.optimalMoves === 0) return false;
+    return this.moveCount > (this.optimalMoves + 4);
+  },
+
+  // Update and save best score and grade
   updateBestScore(level, moves) {
     const scoreKey = `level_${level}`;
     const current = this.bestScores[scoreKey] || Infinity;
-    if (moves < current) {
+    const isNewRecord = moves < current;
+    
+    if (isNewRecord) {
       this.bestScores[scoreKey] = moves;
       localStorage.setItem(GameConfig.storage.bestScores, JSON.stringify(this.bestScores));
-      return true; // New record
+      
+      // Also update grade
+      const grade = this.getGrade();
+      if (grade) {
+        this.bestGrades[scoreKey] = grade.grade;
+        localStorage.setItem(GameConfig.storage.bestGrades, JSON.stringify(this.bestGrades));
+      }
     }
-    return false;
+    
+    return isNewRecord;
   },
 
   // Get current best score for display
@@ -100,32 +147,73 @@ const GameState = {
     return this.bestScores[scoreKey] || '-';
   },
 
-  // Get all scores for scoreboard
+  // Get current best grade for display
+  getBestGrade() {
+    const scoreKey = `level_${this.currentLevel}`;
+    return this.bestGrades[scoreKey] || null;
+  },
+
+  // Get all scores and grades for scoreboard
   getAllScores() {
     const scores = [];
     for (let level = 1; level <= 20; level++) {
       const scoreKey = `level_${level}`;
       const score = this.bestScores[scoreKey] || null;
+      const grade = this.bestGrades[scoreKey] || null;
+      
       scores.push({
         level,
         score,
-        difficulty: DIFFICULTY_LEVELS[level]?.name || ""
+        grade,
+        gradeDisplay: grade ? this.getGradeDisplay(grade) : null,
+        difficulty: DIFFICULTY_LEVELS[level]?.name || "",
+        optimal: level in DIFFICULTY_LEVELS ? DIFFICULTY_LEVELS[level].targetMoves : null
       });
     }
     return scores;
   },
 
+  // Get display text for a grade
+  getGradeDisplay(grade) {
+    const gradeDisplayMap = {
+      'PERFECT': 'מושלם!',  // Perfect!
+      'GREAT': 'מצוין!',     // Great!
+      'GOOD': 'טוב',         // Good
+      'OK': 'סביר',          // OK
+      'FAIL': 'נסה שוב'      // Try Again
+    };
+    
+    return gradeDisplayMap[grade] || '';
+  },
+
   // Reset for a new game
-  reset() {
+  reset(reuseSeed = false) {
+    const size = this.boardSize || 6; // Default to 6 if boardSize is undefined
     this.board = [];
-    this.owned = Array(this.boardSize).fill().map(() => Array(this.boardSize).fill(false));
+    this.owned = Array(size).fill().map(() => Array(size).fill(false));
     this.moveCount = 0;
     this.activeTiles = 0;
     this.gameActive = true;
     this.initialColor = '';
     
-    // Generate a new random seed for board generation
-    this.currentSeed = Math.floor(Math.random() * 10000);
+    // Don't reset optimalSolution and optimalMoves if reusing seed
+    // This ensures we keep the same target for replays
+    if (!reuseSeed) {
+      this.optimalSolution = [];
+      this.optimalMoves = 0;
+      // Only clear savedBoardData if not reusing seed
+      this.savedBoardData = null;
+    }
+    
+    if (reuseSeed) {
+      // Keep the current seed for replaying the same board
+      console.log("Reusing seed:", this.currentSeed);
+    } else {
+      // Save the last seed first
+      this.lastSeed = this.currentSeed;
+      // Generate a new random seed for board generation
+      this.currentSeed = Math.floor(Math.random() * 10000);
+    }
   }
 };
 
