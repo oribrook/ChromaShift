@@ -1,6 +1,7 @@
 /**
  * ChromaShift Game - Game Module
  * Handles core game logic, board generation, and game flow
+ * OPTIMIZED VERSION with performance fixes
  */
 
 import { GameConfig } from './config.js';
@@ -27,6 +28,17 @@ const Game = {
     // Make Game object accessible globally for sound system
     window.Game = this;
     window.GameState = GameState;
+    
+    // Add periodic memory cleanup
+    this.cleanupInterval = setInterval(() => {
+      // Only run cleanup if the browser has been idle for a moment
+      if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(() => this.cleanupMemory());
+      } else {
+        // Fallback for browsers without requestIdleCallback
+        setTimeout(() => this.cleanupMemory(), 0);
+      }
+    }, 60000); // Run every minute
   },
 
   // Start a new game
@@ -59,6 +71,9 @@ const Game = {
     
     // Display the optimal moves indicator
     UI.updateOptimalMovesDisplay();
+    
+    // Add cleanup call
+    this.cleanupMemory();
   },
 
   // Replay the exact same board
@@ -116,6 +131,9 @@ const Game = {
       console.log('Optimal moves:', GameState.savedBoardData.optimalMoves);
       console.log('Current seed:', GameState.currentSeed);
     }
+    
+    // Add cleanup call
+    this.cleanupMemory();
   },
 
   // Create the game board
@@ -178,6 +196,9 @@ const Game = {
       console.log('Optimal moves:', generatedBoardData.optimalMoves);
       console.log('Current seed:', GameState.currentSeed);
     }
+    
+    // Add cleanup call
+    this.cleanupMemory();
   },
 
   // Handle tile click (for surrounding tiles)
@@ -254,7 +275,7 @@ const Game = {
     }, 300);
   },
 
-  // Special first-move flood fill that captures all connected tiles of the same color
+  // OPTIMIZED: Special first-move flood fill that captures all connected tiles of same color
   firstMoveFloodFill(color) {
     const { boardSize, board } = GameState;
     const startX = boardSize - 1; // Right side (RTL)
@@ -263,40 +284,72 @@ const Game = {
     // Create a visited array to keep track of processed cells
     const visited = Array(boardSize).fill().map(() => Array(boardSize).fill(false));
     
-    // Start flood fill from the initial position
-    const stack = [[startX, startY]];
+    // Use a queue instead of a stack for breadth-first traversal (more predictable)
+    const queue = [[startX, startY]];
     visited[startY][startX] = true;
     
-    while (stack.length > 0) {
-      const [x, y] = stack.pop();
+    // Track tiles to animate
+    const tilesToAnimate = [];
+    
+    // Safety counter
+    let safetyCounter = 0;
+    const MAX_SAFETY_LIMIT = boardSize * boardSize * 2;
+    
+    // Process the queue
+    let currentIndex = 0;
+    while (currentIndex < queue.length && safetyCounter < MAX_SAFETY_LIMIT) {
+      safetyCounter++;
+      
+      const [x, y] = queue[currentIndex++];
       
       // Mark current cell as owned
       GameState.owned[y][x] = true;
       GameState.activeTiles++;
+      
+      // If this isn't the starting tile, add it to animation list
+      if (!(x === startX && y === startY)) {
+        tilesToAnimate.push([x, y]);
+      }
       
       // Get neighbors
       const neighbors = this.getNeighbors(x, y);
       
       // Check all neighboring cells
       for (const [nx, ny] of neighbors) {
-        // If not visited and has the same color, add to stack
+        // If not visited and has the same color, add to queue
         if (!visited[ny][nx] && board[ny][nx] === color) {
           visited[ny][nx] = true;
-          stack.push([nx, ny]);
-          
-          // Animate the newly owned tile
-          const tileEl = document.querySelector(`.tile[data-x="${nx}"][data-y="${ny}"]`);
+          queue.push([nx, ny]);
+        }
+      }
+    }
+    
+    // Safety check - if we hit the limit, log a warning
+    if (safetyCounter >= MAX_SAFETY_LIMIT) {
+      console.warn("First move flood fill reached maximum safety limit - possible infinite loop avoided");
+    }
+    
+    // Update the board UI
+    UI.updateBoard();
+    
+    // Animate tiles with limit to prevent overwhelming the browser
+    const ANIMATION_THRESHOLD = 20;
+    const shouldAnimate = tilesToAnimate.length <= ANIMATION_THRESHOLD;
+    
+    if (shouldAnimate && tilesToAnimate.length > 0) {
+      // Animate in small batches with staggered timing
+      tilesToAnimate.forEach(([x, y], index) => {
+        setTimeout(() => {
+          const tileEl = document.querySelector(`.tile[data-x="${x}"][data-y="${y}"]`);
           if (tileEl) {
             tileEl.classList.add('newly-owned');
             setTimeout(() => {
               tileEl.classList.remove('newly-owned');
             }, 500);
           }
-        }
-      }
+        }, Math.min(index * 30, 1000)); // Cap the maximum delay to 1 second
+      });
     }
-    
-    UI.updateBoard();
   },
 
   // Check if expanding with a color would add new tiles
@@ -320,12 +373,12 @@ const Game = {
     return false; // No new tiles would be acquired
   },
 
-  // Flood fill algorithm - FIXED to prevent infinite loops
+  // OPTIMIZED: Flood fill algorithm to prevent infinite loops and performance issues
   floodFill(newColor) {
     const { board, owned, boardSize } = GameState;
     const previousActiveTiles = GameState.activeTiles;
-
-    // First change all owned tiles to the new color
+    
+    // Step 1: First change all owned tiles to the new color (no DOM updates yet)
     for (let y = 0; y < boardSize; y++) {
       for (let x = 0; x < boardSize; x++) {
         if (owned[y][x]) {
@@ -333,64 +386,93 @@ const Game = {
         }
       }
     }
-
-    // Keep expanding until no more tiles can be claimed
-    let changed = true;
-    let iterations = 0;
-    const MAX_ITERATIONS = boardSize * boardSize; // Safety limit
     
-    while (changed && iterations < MAX_ITERATIONS) {
-      changed = false;
-      iterations++;
-      
-      // Track tiles to claim in this iteration to avoid modifying while iterating
-      const tilesToClaim = [];
-      
-      for (let y = 0; y < boardSize; y++) {
-        for (let x = 0; x < boardSize; x++) {
-          if (!owned[y][x]) {
-            // Check if any neighboring tile is owned and has the same color
-            const neighbors = this.getNeighbors(x, y);
-            let shouldClaim = false;
-            
-            for (const [nx, ny] of neighbors) {
-              if (owned[ny][nx] && board[y][x] === newColor) {
-                shouldClaim = true;
-                break;
-              }
-            }
-            
-            if (shouldClaim) {
+    // Step 2: Use a queue-based approach to find all tiles to claim
+    const tilesToClaim = []; // Store all tiles to claim in one batch
+    const visitedTiles = new Set(); // Track visited tiles to prevent duplicates
+    let safetyCounter = 0;
+    const MAX_SAFETY_LIMIT = boardSize * boardSize * 2; // Conservative safety limit
+    
+    // Initial pass to find adjacent tiles of the correct color
+    for (let y = 0; y < boardSize; y++) {
+      for (let x = 0; x < boardSize; x++) {
+        // Skip already owned tiles
+        if (owned[y][x]) continue;
+        
+        // Check if this tile is the right color and adjacent to any owned tile
+        if (board[y][x] === newColor) {
+          const neighbors = this.getNeighbors(x, y);
+          for (const [nx, ny] of neighbors) {
+            if (owned[ny][nx]) {
+              // This is a candidate tile to claim
               tilesToClaim.push([x, y]);
+              // Mark as visited so we don't process it again
+              visitedTiles.add(`${x},${y}`);
+              break;
             }
           }
         }
       }
+    }
+    
+    // Process the queue to find all tiles to claim
+    let currentIndex = 0;
+    while (currentIndex < tilesToClaim.length && safetyCounter < MAX_SAFETY_LIMIT) {
+      safetyCounter++;
       
-      // Apply changes after iteration
-      if (tilesToClaim.length > 0) {
-        changed = true;
-        for (const [x, y] of tilesToClaim) {
-          owned[y][x] = true;
-          GameState.activeTiles++;
-          
-          // Find the tile element and add the animation class
+      const [x, y] = tilesToClaim[currentIndex++];
+      // Mark this tile as owned in our data model (but don't update DOM yet)
+      owned[y][x] = true;
+      GameState.activeTiles++;
+      
+      // Find any new adjacent tiles of the right color
+      const neighbors = this.getNeighbors(x, y);
+      for (const [nx, ny] of neighbors) {
+        const key = `${nx},${ny}`;
+        // Skip if already visited or already owned
+        if (visitedTiles.has(key) || owned[ny][nx]) continue;
+        
+        // Check if this neighbor should be claimed
+        if (board[ny][nx] === newColor) {
+          tilesToClaim.push([nx, ny]);
+          visitedTiles.add(key);
+        }
+      }
+    }
+    
+    // Safety check - if we hit the limit, log a warning
+    if (safetyCounter >= MAX_SAFETY_LIMIT) {
+      console.warn("Flood fill reached maximum safety limit - possible infinite loop avoided");
+    }
+    
+    // Step 3: Batch update the UI for all newly claimed tiles
+    // Only animate if we didn't claim too many tiles (prevents animation overload)
+    const ANIMATION_THRESHOLD = 20; // Don't animate if we claimed more than this many tiles
+    const shouldAnimate = tilesToClaim.length > 0 && tilesToClaim.length <= ANIMATION_THRESHOLD;
+    
+    // Update UI with a tiny delay to ensure the UI thread can breathe
+    setTimeout(() => {
+      // First update the general board state
+      UI.updateBoard();
+      
+      // Then add animation classes if appropriate
+      if (shouldAnimate) {
+        tilesToClaim.forEach(([x, y], index) => {
           const tileEl = document.querySelector(`.tile[data-x="${x}"][data-y="${y}"]`);
           if (tileEl) {
-            tileEl.classList.add('newly-owned');
-            // Remove the class after animation completes to allow retriggering
+            // Stagger animations slightly for visual effect
             setTimeout(() => {
-              tileEl.classList.remove('newly-owned');
-            }, 500);
+              tileEl.classList.add('newly-owned');
+              // Remove the class after animation completes
+              setTimeout(() => {
+                tileEl.classList.remove('newly-owned');
+              }, 500);
+            }, index * 30); // Stagger each tile's animation by 30ms
           }
-        }
+        });
       }
-    }
+    }, 0);
     
-    if (iterations >= MAX_ITERATIONS) {
-      console.warn("Flood fill reached maximum iterations - possible infinite loop avoided");
-    }
-
     // Return whether any new tiles were acquired
     return GameState.activeTiles > previousActiveTiles;
   },
@@ -438,7 +520,61 @@ const Game = {
       setTimeout(() => {
         UI.showWinModal(GameState.moveCount, gradeInfo, GameState.optimalMoves);
       }, 300);
+      
+      // Run cleanup after win
+      this.cleanupMemory();
     }
+  },
+  
+  // Check and clear orphaned animations and perform memory cleanup
+  cleanupMemory() {
+    console.log("Performing memory cleanup...");
+    
+    // 1. Clear any animation classes that might be stuck
+    const animatedTiles = document.querySelectorAll('.newly-owned');
+    if (animatedTiles.length > 0) {
+      console.log(`Clearing ${animatedTiles.length} stuck animations`);
+      animatedTiles.forEach(tile => tile.classList.remove('newly-owned'));
+    }
+    
+    // 2. Check for orphaned event listeners (can't directly remove, but can diagnose)
+    const buttons = document.querySelectorAll('button');
+    console.log(`Auditing ${buttons.length} buttons for potential event listener buildup`);
+    
+    // 3. Clean up any large objects that might be consuming memory
+    if (GameState.savedBoardData && GameState.savedBoardData.board) {
+      // Only keep board data if we're likely to use it soon
+      if (!GameState.gameActive) {
+        console.log("Clearing saved board data to free memory");
+        GameState.savedBoardData = null;
+      }
+    }
+    
+    // 4. Check for visible modals that should be hidden
+    const visibleModals = document.querySelectorAll('.modal:not(.hidden)');
+    if (visibleModals.length > 0) {
+      console.log(`Found ${visibleModals.length} modal(s) that might be stuck open`);
+      
+      // Only force-close modals if the game is not active (to avoid interrupting gameplay)
+      if (!GameState.gameActive) {
+        visibleModals.forEach(modal => {
+          console.log(`Force closing modal: ${modal.id}`);
+          modal.classList.add('hidden');
+        });
+      }
+    }
+    
+    // 5. Force garbage collection hint (not guaranteed but can help)
+    if (window.gc) {
+      try {
+        window.gc();
+        console.log("Garbage collection requested");
+      } catch (e) {
+        // GC not available, normal in most browsers
+      }
+    }
+    
+    return true;
   }
 };
 
