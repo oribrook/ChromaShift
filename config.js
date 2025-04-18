@@ -39,8 +39,11 @@ const GameConfig = {
   
   // Dynamic tile size based on screen size
   get tileSize() {
-    // Responsive tile sizing
-    return window.innerWidth < 600 ? 45 : 60;
+    // More granular responsive tile sizing
+    if (window.innerWidth < 375) return 35;
+    if (window.innerWidth < 480) return 40;
+    if (window.innerWidth < 600) return 45;
+    return 60;
   },
   
   // Local storage keys

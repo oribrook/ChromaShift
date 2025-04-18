@@ -467,6 +467,10 @@ const UI = {
 
         // Update the board grid
         this.boardEl.style.gridTemplateColumns = `repeat(${GameState.boardSize}, ${tileSize}px)`;
+
+        // Adjust layout based on orientation
+        const isLandscape = window.innerWidth > window.innerHeight;
+        document.body.classList.toggle('landscape', isLandscape);
     },
 
     // Update move counter display
