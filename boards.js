@@ -1,190 +1,323 @@
-/**
- * ChromaShift Game - Difficulty-Based Board Generator
- * This system creates boards with gradual difficulty progression
- * and tracks optimal solutions for grading player performance
- */
-
-// Import constants from the constants file
-import { 
-  COLORS, 
-  DIFFICULTY_LEVELS, 
-  GRADE_THRESHOLDS, 
-  GRADE_DISPLAY 
+// boards.js
+import {
+  COLORS,
+  DIFFICULTY_LEVELS,
+  GRADE_THRESHOLDS,
+  GRADE_DISPLAY
 } from './constants.js';
 
-/**
- * Generates a board with controlled difficulty and known optimal solution
- * @param {number} size - Board size (width/height)
- * @param {number} difficulty - Difficulty level (1-20)
- * @param {number} seed - Random seed (optional)
- * @returns {Object} Generated board with solution data
- */
 function generateBoard(size = 6, difficulty = 1, seed = null) {
   return generateBoardWithSolution(size, difficulty, seed);
 }
 
-/**
- * Generates a board using a solution-first approach
- * Creates a puzzle by working backwards from a solved state
- * @param {number} size - Board size (width/height)
- * @param {number} difficulty - Difficulty level (1-20)
- * @param {number} seed - Random seed (optional)
- * @returns {Object} Board data with solution information
- */
 function generateBoardWithSolution(size = 6, difficulty = 1, seed = null) {
-  // Get difficulty parameters
-  const { adjacencyFactor, colorCount, targetMoves } = 
+  const { adjacencyFactor: initialAdjacencyFactor, colorCount, targetMoves } =
     DIFFICULTY_LEVELS[difficulty] || DIFFICULTY_LEVELS[1];
+
+  let currentAdjacencyFactor = initialAdjacencyFactor;
+  const expectedMoves = (difficulty < 12) ? difficulty + 2 : Math.floor(Math.random() * 4) + 12;
+  const minAcceptableMoves = expectedMoves - 1;
+  const maxAcceptableMoves = expectedMoves + 1;
+  const maxAttempts = 10;
+  let attempts = 0;
+  let board, optimalSolution, analysis;
   
-  // Select colors for this board
-  const boardColors = COLORS.slice(0, colorCount);
+  while (attempts < maxAttempts) {
+    attempts++;
+    const boardColors = COLORS.slice(0, colorCount);
+    board = createRandomBoard(size, boardColors, currentAdjacencyFactor);
+    const startX = size - 1;
+    const startY = 0;
+    optimalSolution = findGreedyOptimalSolution(board, startX, startY, boardColors);
+    
+    if (optimalSolution.length >= minAcceptableMoves && 
+        optimalSolution.length <= maxAcceptableMoves) {
+      break;
+    }
+    
+    if (optimalSolution.length < expectedMoves) {
+      currentAdjacencyFactor = Math.max(0.2, currentAdjacencyFactor - 0.05);
+    } else {
+      currentAdjacencyFactor = Math.min(0.9, currentAdjacencyFactor + 0.05);
+    }
+  }
   
-  // Create a fully solved board (all same color)
-  let initialColor = boardColors[Math.floor(Math.random() * boardColors.length)];
-  let board = Array(size).fill().map(() => Array(size).fill(initialColor));
+  if (attempts >= maxAttempts) {
+    console.warn(`Could not generate board with exactly ${expectedMoves} moves after ${maxAttempts} attempts. Using best available: ${optimalSolution.length} moves`);
+  }
   
-  // Track ownership (Start with all owned)
-  let owned = Array(size).fill().map(() => Array(size).fill(true));
+  analysis = analyzeBoard(board);
   
-  // Starting position (top-right for RTL)
+  return {
+    board,
+    optimalSolution,
+    optimalMoves: optimalSolution.length,
+    analysis
+  };
+}
+
+function createRandomBoard(size, boardColors, adjacencyFactor) {
+  let board = Array(size).fill().map(() => 
+    Array(size).fill().map(() => 
+      boardColors[Math.floor(Math.random() * boardColors.length)]
+    )
+  );
+  
+  board = adjustBoardForDifficulty(board, boardColors, adjacencyFactor);
+  
   const startX = size - 1;
   const startY = 0;
   
-  // Store optimal solution steps
-  const solutionSteps = [];
+  const boardCopy = board.map(row => [...row]);
   
-  // Perform "unmoves" to create the puzzle
-  const movesNeeded = targetMoves;
-  
-  for (let moveNum = 0; moveNum < movesNeeded; moveNum++) {
-    // Choose a color different from the current one
-    let availableColors = boardColors.filter(c => c !== initialColor);
-    let newColor = availableColors[Math.floor(Math.random() * availableColors.length)];
-    
-    // Store this step in the solution (in reverse order)
-    solutionSteps.unshift(newColor);
-    
-    // Find tiles to "unown" - We create a disconnected region with this color
-    let tilesToUnown = findTilesToUncolorForDifficulty(board, owned, newColor, 
-      startX, startY, size, adjacencyFactor);
-    
-    // If we couldn't find enough tiles to uncolor, try another color
-    if (tilesToUnown.length < 2) {
-      moveNum--; // Try again with a different color
-      continue;
-    }
-    
-    // Apply the "unmove"
-    for (const [x, y] of tilesToUnown) {
-      // Change color and mark as unowned
-      board[y][x] = newColor;
-      owned[y][x] = false;
-    }
-    
-    // The new color becomes the initialColor for the next iteration
-    initialColor = newColor;
-  }
-  
-  // Analyze the generated board
-  const analysis = analyzeBoard(board);
-  
-  // Make sure starter tile is owned but all others aren't
-  owned = Array(size).fill().map(() => Array(size).fill(false));
+  let owned = Array(size).fill().map(() => Array(size).fill(false));
   owned[startY][startX] = true;
   
-  // Create a flattened 2D array version of the board to return
-  const result = {
-    board,
-    optimalSolution: solutionSteps,
-    optimalMoves: solutionSteps.length,
-    analysis
-  };
+  const verificationLimitMoves = size * 4;
+  let countMoves = 0;
+  let canReachAll = false;
   
-  return result;
-}
-
-/**
- * Finds tiles to uncolor for a given move when generating the puzzle
- * @param {Array} board - Current board state
- * @param {Array} owned - Current ownership state
- * @param {string} newColor - Color to apply
- * @param {number} startX - Starting X position
- * @param {number} startY - Starting Y position
- * @param {number} size - Board size
- * @param {number} adjacencyFactor - Controls how connected the regions should be
- * @returns {Array} Array of [x,y] coordinates to uncolor
- */
-function findTilesToUncolorForDifficulty(board, owned, newColor, startX, startY, size, adjacencyFactor) {
-  // Find all owned tiles except the start position
-  const candidates = [];
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      if (owned[y][x] && !(x === startX && y === startY)) {
-        candidates.push([x, y]);
+  while (countMoves < verificationLimitMoves) {
+    countMoves++;
+    
+    const currentColor = getCurrentColor(owned, boardCopy);
+    let madeProgress = false;
+    
+    for (const color of boardColors) {
+      if (color === currentColor) continue;
+      
+      const newOwned = performFloodFill(boardCopy, owned, color);
+      const gainedTiles = countNewTiles(owned, newOwned);
+      
+      if (gainedTiles > 0) {
+        owned = newOwned;
+        madeProgress = true;
+        break;
+      }
+    }
+    
+    if (isFullyOwned(owned)) {
+      canReachAll = true;
+      break;
+    }
+    
+    if (!madeProgress) {
+      const adjacentColors = findAdjacentUnownedColors(boardCopy, owned);
+      
+      if (adjacentColors.length > 0 && !adjacentColors.includes(currentColor)) {
+        const nextColor = adjacentColors[0];
+        owned = performFloodFill(boardCopy, owned, nextColor);
+      } else {
+        const otherColors = boardColors.filter(c => c !== currentColor);
+        const randomColor = otherColors[Math.floor(Math.random() * otherColors.length)];
+        owned = performFloodFill(boardCopy, owned, randomColor);
       }
     }
   }
   
-  // Shuffle candidates
-  for (let i = candidates.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  if (!canReachAll) {
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        if (!owned[y][x]) {
+          const neighbors = [];
+          if (x > 0) neighbors.push({x: x-1, y: y});
+          if (x < size-1) neighbors.push({x: x+1, y: y});
+          if (y > 0) neighbors.push({x: x, y: y-1});
+          if (y < size-1) neighbors.push({x: x, y: y+1});
+          
+          const ownedNeighbors = neighbors.filter(n => owned[n.y][n.x]);
+          
+          if (ownedNeighbors.length > 0) {
+            board[y][x] = boardColors[Math.floor(Math.random() * boardColors.length)];
+          }
+        }
+      }
+    }
   }
   
-  // Select a subset of candidates to uncolor based on adjacency factor
-  const tilesToUncolor = [];
-  const targetCount = Math.ceil(candidates.length * (1 - adjacencyFactor));
+  return board;
+}
+
+function adjustBoardForDifficulty(board, boardColors, adjacencyFactor) {
+  const size = board.length;
+  const newBoard = JSON.parse(JSON.stringify(board));
   
-  let currentCount = 0;
-  while (currentCount < targetCount && candidates.length > 0) {
-    const [x, y] = candidates.shift();
-    tilesToUncolor.push([x, y]);
-    currentCount++;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (Math.random() < adjacencyFactor) {
+        const neighbors = [];
+        if (x > 0) neighbors.push(newBoard[y][x-1]);
+        if (y > 0) neighbors.push(newBoard[y-1][x]);
+        
+        if (neighbors.length > 0) {
+          const neighborToMatch = neighbors[Math.floor(Math.random() * neighbors.length)];
+          newBoard[y][x] = neighborToMatch;
+        }
+      } else {
+        const otherColors = boardColors.filter(c => c !== newBoard[y][x]);
+        if (otherColors.length > 0) {
+          newBoard[y][x] = otherColors[Math.floor(Math.random() * otherColors.length)];
+        }
+      }
+    }
   }
   
-  return tilesToUncolor;
+  return newBoard;
 }
 
-/**
- * Maps difficulty level to expected number of color regions
- */
-function difficultyToExpectedRegions(difficulty) {
-  // Rough estimate: easier levels have fewer regions
-  return Math.floor(3 + (difficulty * 0.8));
+function findGreedyOptimalSolution(board, startX, startY, availableColors) {
+  const size = board.length;
+  
+  let owned = Array(size).fill().map(() => Array(size).fill(false));
+  owned[startY][startX] = true;
+  
+  const solution = [];
+  
+  const seenStates = new Set();
+  
+  let moveCount = 0;
+  const maxMoves = size * size;
+  
+  while (!isFullyOwned(owned) && moveCount < maxMoves) {
+    moveCount++;
+    
+    const currentColor = getCurrentColor(owned, board);
+    
+    const stateSignature = owned.map(row => row.map(cell => cell ? '1' : '0').join('')).join('') + '|' + currentColor;
+    
+    if (seenStates.has(stateSignature)) {
+      const remainingColors = new Set();
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          if (!owned[y][x]) {
+            remainingColors.add(board[y][x]);
+          }
+        }
+      }
+      
+      const targetColor = Array.from(remainingColors)[0] || 
+                         availableColors.find(c => c !== currentColor);
+      
+      solution.push(targetColor);
+      owned = performFloodFill(board, owned, targetColor);
+      
+      seenStates.clear();
+      continue;
+    }
+    
+    seenStates.add(stateSignature);
+    
+    let bestColor = null;
+    let maxGain = 0;
+    
+    for (const color of availableColors) {
+      if (color === currentColor) continue;
+      
+      const newOwned = performFloodFill(board, owned, color);
+      const tilesGained = countNewTiles(owned, newOwned);
+      
+      if (tilesGained > maxGain) {
+        maxGain = tilesGained;
+        bestColor = color;
+      }
+    }
+    
+    if (maxGain === 0) {
+      const adjacentColors = findAdjacentUnownedColors(board, owned);
+      
+      if (adjacentColors.length > 0 && !adjacentColors.includes(currentColor)) {
+        bestColor = adjacentColors[0];
+      } else {
+        const otherColors = availableColors.filter(color => color !== currentColor);
+        bestColor = otherColors[Math.floor(Math.random() * otherColors.length)];
+      }
+    }
+    
+    solution.push(bestColor);
+    owned = performFloodFill(board, owned, bestColor);
+  }
+  
+  return solution;
 }
 
-/**
- * Analyzes a board to determine its properties
- * @param {Array} board - The board to analyze
- * @returns {Object} Analysis results
- */
+function findAdjacentUnownedColors(board, owned) {
+  const size = board.length;
+  const colors = new Set();
+  
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (owned[y][x]) {
+        const adjacentCells = [
+          [x-1, y], [x+1, y], 
+          [x, y-1], [x, y+1]
+        ];
+        
+        for (const [nx, ny] of adjacentCells) {
+          if (
+            nx >= 0 && nx < size &&
+            ny >= 0 && ny < size &&
+            !owned[ny][nx]
+          ) {
+            colors.add(board[ny][nx]);
+          }
+        }
+      }
+    }
+  }
+  
+  return Array.from(colors);
+}
+
+function getCurrentColor(owned, board) {
+  for (let y = 0; y < owned.length; y++) {
+    for (let x = 0; x < owned[0].length; x++) {
+      if (owned[y][x]) {
+        return board[y][x];
+      }
+    }
+  }
+  return null;
+}
+
+function countNewTiles(oldOwned, newOwned) {
+  let count = 0;
+  
+  for (let y = 0; y < oldOwned.length; y++) {
+    for (let x = 0; x < oldOwned[0].length; x++) {
+      if (!oldOwned[y][x] && newOwned[y][x]) {
+        count++;
+      }
+    }
+  }
+  
+  return count;
+}
+
 function analyzeBoard(board) {
-  // Count regions of same color
   const visited = new Set();
   let regions = 0;
-  
+
   for (let y = 0; y < board.length; y++) {
     for (let x = 0; x < board[0].length; x++) {
       const key = `${x},${y}`;
       if (!visited.has(key)) {
         regions++;
-        // Find all connected cells of same color
-        const queue = [{x, y}];
+        const queue = [{ x, y }];
         const color = board[y][x];
         visited.add(key);
-        
+
         while (queue.length > 0) {
-          const {x: cx, y: cy} = queue.shift();
-          
-          // Check adjacent cells
+          const { x: cx, y: cy } = queue.shift();
           const adjacentCells = [
-            {x: cx-1, y: cy}, {x: cx+1, y: cy},
-            {x: cx, y: cy-1}, {x: cx, y: cy+1}
+            { x: cx - 1, y: cy }, { x: cx + 1, y: cy },
+            { x: cx, y: cy - 1 }, { x: cx, y: cy + 1 }
           ];
-          
+
           for (const cell of adjacentCells) {
-            if (cell.x >= 0 && cell.x < board[0].length && 
-                cell.y >= 0 && cell.y < board.length) {
+            if (
+              cell.x >= 0 && cell.x < board[0].length &&
+              cell.y >= 0 && cell.y < board.length
+            ) {
               const newKey = `${cell.x},${cell.y}`;
               if (!visited.has(newKey) && board[cell.y][cell.x] === color) {
                 visited.add(newKey);
@@ -196,60 +329,77 @@ function analyzeBoard(board) {
       }
     }
   }
-  
-  // Determine estimated difficulty
-  const estimatedDifficulty = regions > 20 ? "קשה מאוד" : 
-                             regions > 15 ? "קשה" : 
-                             regions > 10 ? "בינוני" : 
-                             regions > 5 ? "קל" : "קל מאוד";
-  
-  return {
-    regions,
-    estimatedDifficulty
-  };
+
+  const estimatedDifficulty = regions > 20 ? "קשה מאוד" :
+    regions > 15 ? "קשה" :
+    regions > 10 ? "בינוני" :
+    regions > 5 ? "קל" : "קל מאוד";
+
+  return { regions, estimatedDifficulty };
 }
 
-/**
- * Calculate player grade based on move count compared to optimal solution
- * @param {number} moveCount - Player's move count
- * @param {number} optimalMoves - Optimal number of moves
- * @returns {Object} Grade information
- */
 function calculateGrade(moveCount, optimalMoves) {
   const difference = moveCount - optimalMoves;
-  
   let gradeKey = 'FAIL';
-  if (difference <= GRADE_THRESHOLDS.PERFECT) {
-    gradeKey = 'PERFECT';
-  } else if (difference <= GRADE_THRESHOLDS.GREAT) {
-    gradeKey = 'GREAT';
-  } else if (difference <= GRADE_THRESHOLDS.GOOD) {
-    gradeKey = 'GOOD';
-  } else if (difference <= GRADE_THRESHOLDS.OK) {
-    gradeKey = 'OK';
-  }
-  
+  if (difference <= GRADE_THRESHOLDS.PERFECT) gradeKey = 'PERFECT';
+  else if (difference <= GRADE_THRESHOLDS.GREAT) gradeKey = 'GREAT';
+  else if (difference <= GRADE_THRESHOLDS.GOOD) gradeKey = 'GOOD';
+  else if (difference <= GRADE_THRESHOLDS.OK) gradeKey = 'OK';
+
   return {
     grade: gradeKey,
     displayText: GRADE_DISPLAY[gradeKey],
-    difference: difference
+    difference
   };
 }
 
-// Generate a complete set of boards for all difficulty levels
-function generateGameBoards() {
-  const boards = [];
-  
-  for (let level = 1; level <= 20; level++) {
-    boards.push(generateBoard(6, level));
-  }
-  
-  return boards;
+function isFullyOwned(owned) {
+  return owned.every(row => row.every(cell => cell));
 }
 
-export { 
-  generateBoard, 
-  generateBoardWithSolution, 
-  analyzeBoard, 
+function performFloodFill(board, owned, newColor) {
+  const size = board.length;
+  const newOwned = owned.map(row => [...row]);
+  const queue = [];
+  const visited = Array(size).fill().map(() => Array(size).fill(false));
+  
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (owned[y][x]) {
+        queue.push([x, y]);
+        visited[y][x] = true;
+      }
+    }
+  }
+  
+  while (queue.length > 0) {
+    const [x, y] = queue.shift();
+    
+    const adjacentCells = [
+      [x-1, y], [x+1, y], 
+      [x, y-1], [x, y+1]
+    ];
+    
+    for (const [nx, ny] of adjacentCells) {
+      if (
+        nx >= 0 && nx < size &&
+        ny >= 0 && ny < size &&
+        !visited[ny][nx] &&
+        board[ny][nx] === newColor
+      ) {
+        newOwned[ny][nx] = true;
+        visited[ny][nx] = true;
+        queue.push([nx, ny]);
+      }
+    }
+  }
+  
+  return newOwned;
+}
+
+export {
+  generateBoard,
+  generateBoardWithSolution,
+  analyzeBoard,
   calculateGrade
 };
