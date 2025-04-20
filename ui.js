@@ -97,7 +97,7 @@ const UI = {
 
         const label = document.createElement('span');
         label.className = 'stat-label';
-        label.textContent = 'פתרון ממוצע';
+        label.textContent = 'מינימום מהלכים';
 
         const value = document.createElement('span');
         value.className = 'stat-value';
@@ -166,7 +166,7 @@ const UI = {
         // Add optimal moves display
         const optimalMovesInfo = document.createElement('p');
         optimalMovesInfo.id = 'exceededOptimalMoves';
-        optimalMovesInfo.textContent = 'מספר מהלכים ממוצע: ';
+        optimalMovesInfo.textContent = 'מספר מהלכים מינימלי: ';
         modalBody.appendChild(optimalMovesInfo);
 
         // Create buttons container
@@ -219,7 +219,7 @@ const UI = {
         // Update optimal moves info
         const optimalMovesEl = document.getElementById('exceededOptimalMoves');
         if (optimalMovesEl) {
-            optimalMovesEl.textContent = `מספר מהלכים ממוצע: ${optimalMoves} (מותר עד ${optimalMoves + 4} מהלכים)`;
+            optimalMovesEl.textContent = `מספר מהלכים מינימלי: ${optimalMoves} (מותר עד ${optimalMoves + 4} מהלכים)`;
         }
 
         // Show the modal
@@ -614,7 +614,7 @@ const UI = {
             } else {
                 // this.optimalMovesEl.innerHTML += ` (${difference}+ מהמינימום)`;
                 const temp = difference > 0 ? "יותר" : "פחות";
-                this.optimalMovesEl.innerHTML += ` שזה ${Math.abs(difference)} ${temp}  מהממוצע`;
+                this.optimalMovesEl.innerHTML += ` שזה ${Math.abs(difference)} ${temp}  מהמינימום`;
             }
         }
 
@@ -662,7 +662,7 @@ const UI = {
             { text: 'רמת קושי', class: 'difficulty-header' },
             { text: 'שיא אישי', class: 'score-header' },
             { text: 'ציון', class: 'grade-header' },
-            { text: 'ממוצע', class: 'optimal-header' }
+            { text: 'מינימלי', class: 'optimal-header' }
         ];
 
         headers.forEach(header => {

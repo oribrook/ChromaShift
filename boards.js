@@ -28,7 +28,9 @@ function generateBoardWithSolution(size = 6, difficulty = 1, seed = null) {
     board = createRandomBoard(size, boardColors, currentAdjacencyFactor);
     const startX = size - 1;
     const startY = 0;
-    optimalSolution = findGreedyOptimalSolution(board, startX, startY, boardColors);
+    
+    // Instead of using greedy algorithm, use the recursive solution finder
+    optimalSolution = findOptimalSolutionRecursive(board, startX, startY, boardColors);
     
     if (optimalSolution.length >= minAcceptableMoves && 
         optimalSolution.length <= maxAcceptableMoves) {
@@ -54,6 +56,113 @@ function generateBoardWithSolution(size = 6, difficulty = 1, seed = null) {
     optimalMoves: optimalSolution.length,
     analysis
   };
+}
+
+// New recursive algorithm to find the optimal solution
+function findOptimalSolutionRecursive(board, startX, startY, availableColors) {
+  const size = board.length;
+  
+  // Initialize the owned array with the starting position
+  let initialOwned = Array(size).fill().map(() => Array(size).fill(false));
+  initialOwned[startY][startX] = true;
+  
+  // Get the initial color
+  const initialColor = board[startY][startX];
+  
+  // Create a cache to store already computed states
+  const cache = new Map();
+  
+  // Start the recursive search
+  const result = findOptimalSolutionHelper(board, initialOwned, initialColor, availableColors, cache);
+  
+  return result;
+}
+
+function findOptimalSolutionHelper(board, owned, currentColor, availableColors, cache, depth = 0) {
+  const size = board.length;
+  
+  // If all cells are owned, return empty array (no more moves needed)
+  if (isFullyOwned(owned)) {
+    return [];
+  }
+  
+  // Generate a unique key for the current state
+  const stateKey = serializeState(owned, currentColor);
+  
+  // If this state has been seen before, return the cached result
+  if (cache.has(stateKey)) {
+    return [...cache.get(stateKey)];
+  }
+  
+  // For optimization, limit the maximum recursion depth
+  const MAX_DEPTH = size * 2;
+  if (depth > MAX_DEPTH) {
+    return Array(size * size).fill('');  // Return a large solution to indicate it's not optimal
+  }
+  
+  // Find adjacent colors to consider
+  const adjacentColors = findAdjacentUnownedColors(board, owned);
+  
+  // If there are no adjacent colors, we can't progress further
+  if (adjacentColors.length === 0) {
+    return Array(size * size).fill('');  // Return a large solution to indicate it's not optimal
+  }
+  
+  let bestSolution = Array(size * size).fill('');  // Initialize with a large solution
+  
+  // Try each color (except the current one)
+  for (const color of availableColors) {
+    if (color === currentColor) continue;
+    
+    // Make sure we prioritize colors that are adjacent to our territory
+    if (!adjacentColors.includes(color) && adjacentColors.length > 0) continue;
+    
+    // Perform flood fill with the new color
+    const newOwned = performFloodFill(board, owned, color);
+    
+    // Count how many new tiles we've gained
+    const tilesGained = countNewTiles(owned, newOwned);
+    
+    // Only proceed if we gained some tiles
+    if (tilesGained > 0) {
+      // Recursively find the best solution from this new state
+      const remainingSolution = findOptimalSolutionHelper(board, newOwned, color, availableColors, cache, depth + 1);
+      
+      // Combine the current move with the remaining solution
+      const completeSolution = [color, ...remainingSolution];
+      
+      // Update best solution if this one is better
+      if (completeSolution.length < bestSolution.length) {
+        bestSolution = completeSolution;
+      }
+    }
+  }
+  
+  // If we couldn't find a solution, try all colors as a fallback
+  if (bestSolution.length === size * size && adjacentColors.length === 0) {
+    for (const color of availableColors) {
+      if (color === currentColor) continue;
+      
+      const newOwned = performFloodFill(board, owned, color);
+      const remainingSolution = findOptimalSolutionHelper(board, newOwned, color, availableColors, cache, depth + 1);
+      const completeSolution = [color, ...remainingSolution];
+      
+      if (completeSolution.length < bestSolution.length) {
+        bestSolution = completeSolution;
+      }
+    }
+  }
+  
+  // Cache the result for this state
+  cache.set(stateKey, [...bestSolution]);
+  
+  return bestSolution;
+}
+
+// Helper function to serialize the game state for caching
+function serializeState(owned, currentColor) {
+  const ownedString = owned.map(row => row.map(cell => cell ? '1' : '0').join('')).join('');
+  return `${ownedString}|${currentColor}`;
 }
 
 function createRandomBoard(size, boardColors, adjacencyFactor) {
@@ -163,81 +272,6 @@ function adjustBoardForDifficulty(board, boardColors, adjacencyFactor) {
   }
   
   return newBoard;
-}
-
-function findGreedyOptimalSolution(board, startX, startY, availableColors) {
-  const size = board.length;
-  
-  let owned = Array(size).fill().map(() => Array(size).fill(false));
-  owned[startY][startX] = true;
-  
-  const solution = [];
-  
-  const seenStates = new Set();
-  
-  let moveCount = 0;
-  const maxMoves = size * size;
-  
-  while (!isFullyOwned(owned) && moveCount < maxMoves) {
-    moveCount++;
-    
-    const currentColor = getCurrentColor(owned, board);
-    
-    const stateSignature = owned.map(row => row.map(cell => cell ? '1' : '0').join('')).join('') + '|' + currentColor;
-    
-    if (seenStates.has(stateSignature)) {
-      const remainingColors = new Set();
-      for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-          if (!owned[y][x]) {
-            remainingColors.add(board[y][x]);
-          }
-        }
-      }
-      
-      const targetColor = Array.from(remainingColors)[0] || 
-                         availableColors.find(c => c !== currentColor);
-      
-      solution.push(targetColor);
-      owned = performFloodFill(board, owned, targetColor);
-      
-      seenStates.clear();
-      continue;
-    }
-    
-    seenStates.add(stateSignature);
-    
-    let bestColor = null;
-    let maxGain = 0;
-    
-    for (const color of availableColors) {
-      if (color === currentColor) continue;
-      
-      const newOwned = performFloodFill(board, owned, color);
-      const tilesGained = countNewTiles(owned, newOwned);
-      
-      if (tilesGained > maxGain) {
-        maxGain = tilesGained;
-        bestColor = color;
-      }
-    }
-    
-    if (maxGain === 0) {
-      const adjacentColors = findAdjacentUnownedColors(board, owned);
-      
-      if (adjacentColors.length > 0 && !adjacentColors.includes(currentColor)) {
-        bestColor = adjacentColors[0];
-      } else {
-        const otherColors = availableColors.filter(color => color !== currentColor);
-        bestColor = otherColors[Math.floor(Math.random() * otherColors.length)];
-      }
-    }
-    
-    solution.push(bestColor);
-    owned = performFloodFill(board, owned, bestColor);
-  }
-  
-  return solution;
 }
 
 function findAdjacentUnownedColors(board, owned) {
