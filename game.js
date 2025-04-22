@@ -38,52 +38,62 @@ const Game = {
     
     const { randomBoard, reuseSeed, keepLevel, useSavedBoard } = { ...defaultOptions, ...options };
     
+    // Reset game state with reuseSeed parameter
     GameState.reset(reuseSeed);
     
-    if (useSavedBoard && GameState.savedBoardData) {
+    // If we have saved board data and should use it (either through reuseSeed or useSavedBoard)
+    if ((reuseSeed || useSavedBoard) && GameState.savedBoardData) {
       this.createBoardFromSaved();
     } else {
+      // Create a new board
       this.createBoard(randomBoard);
+      
+      // Save the board for future replay
+      GameState.saveBoardData();
     }
     
     UI.updateMoveCounter();
     UI.updateBestScore();
-    
     UI.updateOptimalMovesDisplay();
     
     this.cleanupMemory();
   },
 
   replayCurrentBoard() {
+    // Use the saved board data directly (no need to regenerate with seed)
     this.startNewGame({ reuseSeed: true, useSavedBoard: true });
   },
 
   createBoardFromSaved() {
     if (!GameState.savedBoardData) {
+      console.warn("No saved board data found, creating new board instead");
       this.createBoard(false);
       return;
     }
     
+    console.log("Creating board from saved data");
     const { boardSize } = GameState;
     const tileSize = GameConfig.tileSize;
     
     UI.boardEl.innerHTML = '';
     UI.boardEl.style.gridTemplateColumns = `repeat(${boardSize}, ${tileSize}px)`;
     
+    // Use deep copy to avoid reference issues
     GameState.board = JSON.parse(JSON.stringify(GameState.savedBoardData.board));
     GameState.setOptimalSolution(
       GameState.savedBoardData.optimalSolution,
       GameState.savedBoardData.optimalMoves
     );
     
+    // Create tile elements in the UI
     for (let y = 0; y < boardSize; y++) {
       for (let x = 0; x < boardSize; x++) {
         const color = GameState.board[y][x];
-        
         UI.createTileElement(x, y, color, tileSize);
       }
     }
     
+    // Reset owned state and set starting tile
     GameState.owned = Array(boardSize).fill().map(() => Array(boardSize).fill(false));
     const startX = boardSize - 1;
     const startY = 0;
@@ -93,7 +103,9 @@ const Game = {
     GameState.initialColor = GameState.board[startY][startX];
     UI.updateBoard();
     
+    // Debug logging
     if (window.location.hash === '#debug') {
+      // Debug code if needed
     }
     
     this.cleanupMemory();
@@ -119,10 +131,13 @@ const Game = {
       generatedBoardData.optimalMoves
     );
     
+    // Save board data for replay
     GameState.savedBoardData = {
       board: JSON.parse(JSON.stringify(generatedBoard)),
       optimalSolution: [...generatedBoardData.optimalSolution],
-      optimalMoves: generatedBoardData.optimalMoves
+      optimalMoves: generatedBoardData.optimalMoves,
+      level: GameState.currentLevel,
+      seed: GameState.currentSeed
     };
 
     for (let y = 0; y < boardSize; y++) {
@@ -143,7 +158,9 @@ const Game = {
     GameState.initialColor = GameState.board[startY][startX];
     UI.updateBoard();
     
+    // Debug logging
     if (window.location.hash === '#debug') {
+      // Debug code if needed
     }
     
     this.cleanupMemory();
@@ -243,6 +260,7 @@ const Game = {
     }
     
     if (safetyCounter >= MAX_SAFETY_LIMIT) {
+      // Safety limit reached, handle if needed
     }
     
     UI.updateBoard();
@@ -339,6 +357,7 @@ const Game = {
     }
     
     if (safetyCounter >= MAX_SAFETY_LIMIT) {
+      // Safety limit reached, handle if needed
     }
     
     const ANIMATION_THRESHOLD = 20;
@@ -414,10 +433,11 @@ const Game = {
     
     const buttons = document.querySelectorAll('button');
     
-    if (GameState.savedBoardData && GameState.savedBoardData.board) {
-      if (!GameState.gameActive) {
-        GameState.savedBoardData = null;
-      }
+    // Modified: Only clear savedBoardData when game is not active and we're not in win state
+    // This ensures we keep the board data for replay after a win
+    if (!GameState.gameActive && !document.querySelector('#winModal:not(.hidden)')) {
+      // GameState.savedBoardData = null;
+      // We actually want to keep the board data for replay
     }
     
     const visibleModals = document.querySelectorAll('.modal:not(.hidden)');
@@ -433,6 +453,7 @@ const Game = {
       try {
         window.gc();
       } catch (e) {
+        // Garbage collection failed, ignore
       }
     }
     

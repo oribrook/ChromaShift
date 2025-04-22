@@ -20,6 +20,14 @@ import {
 // Game configuration
 const GameConfig = {
   
+  storage: {
+    bestScores: 'chromashift_best_scores',
+    bestGrades: 'chromashift_best_grades',
+    completedLevels: 'chromashift_completed_levels',
+    settings: 'chromashift_settings',
+    savedBoard: 'chromashift_saved_board'  // Add this line
+  },
+  
   // Color palette using imported constants
   colors: [
     { hex: COLOR_RED, name: 'אדום' },    // Red

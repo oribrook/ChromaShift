@@ -56,6 +56,9 @@ const GameState = {
       }
     }
     
+    // Load saved board data if available
+    this.loadSavedBoardData();
+    
     // Initialize seed if not set
     if (this.currentSeed === null) {
       this.currentSeed = Math.floor(Math.random() * 10000);
@@ -186,33 +189,82 @@ const GameState = {
     return gradeDisplayMap[grade] || '';
   },
 
+  // Save the complete board data for replay
+  saveBoardData() {
+    // Create a deep copy of the current board and solution
+    const boardData = {
+      board: JSON.parse(JSON.stringify(this.board)),
+      optimalSolution: [...this.optimalSolution],
+      optimalMoves: this.optimalMoves,
+      level: this.currentLevel,
+      seed: this.currentSeed
+    };
+    
+    // Save to in-memory variable
+    this.savedBoardData = boardData;
+    
+    // Save to localStorage for persistence
+    try {
+      localStorage.setItem(GameConfig.storage.savedBoard, JSON.stringify(boardData));
+    } catch (e) {
+      console.warn('Failed to save board to localStorage:', e);
+    }
+    
+    return boardData;
+  },
+  
+  // Load saved board data from localStorage
+  loadSavedBoardData() {
+    try {
+      const savedBoardStr = localStorage.getItem(GameConfig.storage.savedBoard);
+      if (savedBoardStr) {
+        this.savedBoardData = JSON.parse(savedBoardStr);
+        console.log('Loaded saved board data from localStorage');
+      }
+    } catch (e) {
+      console.warn('Failed to load saved board from localStorage:', e);
+      this.savedBoardData = null;
+    }
+  },
+
   // Reset for a new game
   reset(reuseSeed = false) {
     const size = this.boardSize || 6; // Default to 6 if boardSize is undefined
-    this.board = [];
     this.owned = Array(size).fill().map(() => Array(size).fill(false));
     this.moveCount = 0;
     this.activeTiles = 0;
     this.gameActive = true;
     this.initialColor = '';
     
-    // Don't reset optimalSolution and optimalMoves if reusing seed
-    // This ensures we keep the same target for replays
-    if (!reuseSeed) {
-      this.optimalSolution = [];
-      this.optimalMoves = 0;
-      // Only clear savedBoardData if not reusing seed
-      this.savedBoardData = null;
-    }
-    
-    if (reuseSeed) {
-      // Keep the current seed for replaying the same board
+    if (reuseSeed && this.savedBoardData) {
+      // Reuse the saved board data
+      console.log("Reusing saved board data");
+      this.board = JSON.parse(JSON.stringify(this.savedBoardData.board));
+      this.optimalSolution = [...this.savedBoardData.optimalSolution];
+      this.optimalMoves = this.savedBoardData.optimalMoves;
+      // Keep the current seed for logging purposes
       console.log("Reusing seed:", this.currentSeed);
     } else {
+      // Create a new board
+      this.board = [];
+      this.optimalSolution = [];
+      this.optimalMoves = 0;
+      
       // Save the last seed first
       this.lastSeed = this.currentSeed;
       // Generate a new random seed for board generation
       this.currentSeed = Math.floor(Math.random() * 10000);
+      
+      // Clear saved board data when explicitly not reusing
+      if (!reuseSeed) {
+        this.savedBoardData = null;
+        // Also clear from localStorage
+        try {
+          localStorage.removeItem(GameConfig.storage.savedBoard);
+        } catch (e) {
+          console.warn('Failed to clear saved board from localStorage:', e);
+        }
+      }
     }
   }
 };

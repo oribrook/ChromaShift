@@ -77,87 +77,44 @@ function findOptimalSolutionRecursive(board, startX, startY, availableColors) {
   
   return result;
 }
-
 function findOptimalSolutionHelper(board, owned, currentColor, availableColors, cache, depth = 0) {
   const size = board.length;
-  
-  // If all cells are owned, return empty array (no more moves needed)
-  if (isFullyOwned(owned)) {
-    return [];
-  }
-  
-  // Generate a unique key for the current state
-  const stateKey = serializeState(owned, currentColor);
-  
-  // If this state has been seen before, return the cached result
-  if (cache.has(stateKey)) {
-    return [...cache.get(stateKey)];
-  }
-  
-  // For optimization, limit the maximum recursion depth
+
+  if (isFullyOwned(owned)) return [];
+
   const MAX_DEPTH = size * 2;
-  if (depth > MAX_DEPTH) {
-    return Array(size * size).fill('');  // Return a large solution to indicate it's not optimal
-  }
-  
-  // Find adjacent colors to consider
+  if (depth > MAX_DEPTH) return Array(size * size).fill('');
+
+  const stateKey = serializeState(owned, currentColor);
+  const cached = cache.get(stateKey);
+  if (cached) return [...cached]; // trust only minimal paths (see below)
+
   const adjacentColors = findAdjacentUnownedColors(board, owned);
-  
-  // If there are no adjacent colors, we can't progress further
-  if (adjacentColors.length === 0) {
-    return Array(size * size).fill('');  // Return a large solution to indicate it's not optimal
-  }
-  
-  let bestSolution = Array(size * size).fill('');  // Initialize with a large solution
-  
-  // Try each color (except the current one)
+  if (adjacentColors.length === 0) return Array(size * size).fill('');
+
+  let bestSolution = Array(size * size).fill('');
+
   for (const color of availableColors) {
-    if (color === currentColor) continue;
-    
-    // Make sure we prioritize colors that are adjacent to our territory
-    if (!adjacentColors.includes(color) && adjacentColors.length > 0) continue;
-    
-    // Perform flood fill with the new color
+    if (color === currentColor || !adjacentColors.includes(color)) continue;
+
     const newOwned = performFloodFill(board, owned, color);
-    
-    // Count how many new tiles we've gained
-    const tilesGained = countNewTiles(owned, newOwned);
-    
-    // Only proceed if we gained some tiles
-    if (tilesGained > 0) {
-      // Recursively find the best solution from this new state
-      const remainingSolution = findOptimalSolutionHelper(board, newOwned, color, availableColors, cache, depth + 1);
-      
-      // Combine the current move with the remaining solution
-      const completeSolution = [color, ...remainingSolution];
-      
-      // Update best solution if this one is better
-      if (completeSolution.length < bestSolution.length) {
-        bestSolution = completeSolution;
-      }
-    }
+    const gained = countNewTiles(owned, newOwned);
+    if (gained === 0) continue;
+
+    const rest = findOptimalSolutionHelper(board, newOwned, color, availableColors, cache, depth + 1);
+    const full = [color, ...rest];
+
+    if (full.length < bestSolution.length) bestSolution = full;
   }
-  
-  // If we couldn't find a solution, try all colors as a fallback
-  if (bestSolution.length === size * size && adjacentColors.length === 0) {
-    for (const color of availableColors) {
-      if (color === currentColor) continue;
-      
-      const newOwned = performFloodFill(board, owned, color);
-      const remainingSolution = findOptimalSolutionHelper(board, newOwned, color, availableColors, cache, depth + 1);
-      const completeSolution = [color, ...remainingSolution];
-      
-      if (completeSolution.length < bestSolution.length) {
-        bestSolution = completeSolution;
-      }
-    }
+
+  // ❗ store only if best or first
+  if (!cache.has(stateKey) || bestSolution.length < cache.get(stateKey).length) {
+    cache.set(stateKey, [...bestSolution]);
   }
-  
-  // Cache the result for this state
-  cache.set(stateKey, [...bestSolution]);
-  
+
   return bestSolution;
 }
+
 
 // Helper function to serialize the game state for caching
 function serializeState(owned, currentColor) {
